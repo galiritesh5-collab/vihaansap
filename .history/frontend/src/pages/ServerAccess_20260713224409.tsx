@@ -18,15 +18,15 @@ export default function ServerAccess() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#1763B6] to-[#0A3D78] text-white py-12 relative overflow-hidden">
+      <section className="bg-gradient-to-br from-[#1763B6] to-[#0A3D78] text-white py-24 relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/30 border border-blue-400/30 rounded-full text-blue-100 text-xs font-bold uppercase tracking-widest mb-4 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/30 border border-blue-400/30 rounded-full text-blue-100 text-xs font-bold uppercase tracking-widest mb-8 backdrop-blur-sm">
              <Server className="w-3.5 h-3.5" /> SAP Server Access
           </div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-extrabold tracking-tight mb-3 leading-tight">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-extrabold tracking-tight mb-5 leading-tight">
             {config.hero.title}
           </h1>
-          <p className="text-base md:text-lg text-blue-100/90 max-w-2xl mx-auto mb-5 leading-relaxed font-normal">
+          <p className="text-base md:text-lg text-blue-100/90 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
             {config.hero.subtitle}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -41,7 +41,7 @@ export default function ServerAccess() {
       </section>
 
       {/* Server Details */}
-      <section className="py-6 bg-white border-b border-slate-100">
+      <section className="py-12 bg-white border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
              <div className="p-4 bg-slate-50 rounded-xl">
@@ -72,9 +72,9 @@ export default function ServerAccess() {
       </section>
 
       {/* Pricing Plans */}
-      <section id="plans" className="py-8 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <section id="plans" className="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div>
-          <div className="text-center mb-6">
+          <div className="text-center mb-10">
             <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">Access Plans — India</h2>
             <p className="text-slate-500 mt-3 text-sm max-w-xl mx-auto">Choose a plan that fits your practice schedule.</p>
           </div>
@@ -91,7 +91,7 @@ export default function ServerAccess() {
         </div>
 
         <div>
-          <div className="text-center mb-6">
+          <div className="text-center mb-10">
             <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">Access Plans — International</h2>
             <p className="text-slate-500 mt-3 text-sm max-w-xl mx-auto">Pricing in USD for international learners.</p>
           </div>
