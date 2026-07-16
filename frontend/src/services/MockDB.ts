@@ -127,15 +127,7 @@ export class MockDB {
     (db[collection] as any[]).push(item);
     this.set(db);
 
-    // Sync to Firestore for ALL collections
-    const uid = item.uid || item.id;
-    if (uid && firestoreDb) {
-      import('./FirestoreDBService').then(m => {
-        m.FirestoreDBService.upsert(collection, uid, item);
-      });
-    }
-
-    // Backend update (legacy/mock)
+    // Backend update (now handled by Firebase Admin SDK on the server)
     try {
       await fetch(`${API_URL}/db/${String(collection)}`, {
         method: 'POST',
@@ -143,7 +135,7 @@ export class MockDB {
         body: JSON.stringify(item)
       });
     } catch (err) {
-      console.warn('MockDB backend not reachable for addItem');
+      console.warn('Backend not reachable for addItem');
     }
   }
 
@@ -156,14 +148,7 @@ export class MockDB {
       this.set(db);
     }
 
-    // Sync to Firestore for ALL collections
-    if (firestoreDb && id) {
-      import('./FirestoreDBService').then(m => {
-        m.FirestoreDBService.upsert(collection, id, item);
-      });
-    }
-
-    // Backend update (legacy/mock)
+    // Backend update (now handled by Firebase Admin SDK on the server)
     try {
       await fetch(`${API_URL}/db/${String(collection)}/${id}`, {
         method: 'PUT',
@@ -171,31 +156,24 @@ export class MockDB {
         body: JSON.stringify(item)
       });
     } catch (err) {
-      console.warn('MockDB backend not reachable for updateItem');
+      console.warn('Backend not reachable for updateItem');
     }
   }
 
   static async deleteItem(collection: keyof DatabaseSchema, id: string) {
-    // Sync to Firestore for ALL collections
-    if (firestoreDb && id) {
-      import('./FirestoreDBService').then(m => {
-        m.FirestoreDBService.delete(collection, id);
-      });
-    }
-
     // Optimistic UI update
     const db = this.get();
     (db[collection] as any[]) = (db[collection] as any[]).filter(i => (i.id !== id && i.uid !== id));
     this.set(db);
 
-    // Backend update (legacy/mock)
+    // Backend update (now handled by Firebase Admin SDK on the server)
     try {
       await fetch(`${API_URL}/db/${String(collection)}/${id}`, {
         method: 'DELETE',
         headers: await getHeaders()
       });
     } catch (err) {
-      console.warn('MockDB backend not reachable for deleteItem');
+      console.warn('Backend not reachable for deleteItem');
     }
   }
 }

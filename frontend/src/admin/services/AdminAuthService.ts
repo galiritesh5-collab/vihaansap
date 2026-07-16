@@ -3,7 +3,8 @@ import { STORAGE_KEYS } from '../../constants/storage';
 
 export class AdminAuthService {
   static async login(email: string, password: string): Promise<AdminUser> {
-    const response = await fetch('http://localhost:5000/api/auth/admin-login', {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const response = await fetch(`${API_URL}/auth/admin-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
