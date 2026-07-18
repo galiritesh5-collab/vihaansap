@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db as firestoreDb } from '../config/firebase';
+import { isAdminEmail } from '../config/adminConfig';
 import { MockDB } from '../services/MockDB';
 import { FirestoreStudentService } from '../services/FirestoreStudentService';
 
@@ -57,30 +58,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
 
       if (user) {
-        // Look up the user's role securely via Backend API
-        let role: 'admin' | 'mentor' | 'student' = 'student'; // Default to student
-        
-        try {
-          // Fetch role from backend to bypass Firestore Client SDK rules limitations
-          const token = await user.getIdToken();
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-          const res = await fetch(`${API_URL}/users/me/role`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
+        let role: 'admin' | 'mentor' | 'student' = 'student';
+
+        // ── Fast path: Admin email check (no network needed) ──────────────────
+        if (isAdminEmail(user.email)) {
+          console.log(`[AuthContext] Admin access granted for ${user.email} (email-based)`);
+          role = 'admin';
+        } else {
+          // ── Backend role lookup for student / mentor ─────────────────────────
+          try {
+            const token = await user.getIdToken();
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const res = await fetch(`${API_URL}/users/me/role`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && json.role) {
+                role = json.role;
+                console.log(`[AuthContext] Role from backend: ${role}`);
+              }
+            } else {
+              console.error(`[AuthContext] Backend returned ${res.status} when fetching role.`);
             }
-          });
-          
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.role) {
-              role = json.role;
-              console.log(`[AuthContext] Successfully fetched role from backend: ${role}`);
-            }
-          } else {
-            console.error(`[AuthContext] Backend returned ${res.status} when fetching role.`);
+          } catch (err: any) {
+            console.error('[AuthContext] Error fetching role from API:', err);
           }
-        } catch (err: any) {
-          console.error("[AuthContext] Error checking/creating user role via API:", err);
         }
 
         setUserRole(role);
