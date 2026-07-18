@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 const config = require('./config');
 
 let db = null;
@@ -13,16 +14,18 @@ try {
   console.log(`FIREBASE_PRIVATE_KEY: ${privateKey ? 'SET (length: ' + privateKey.length + ')' : 'NOT SET'}`);
 
   if (projectId && clientEmail && privateKey) {
+    let app;
     if (admin.apps.length === 0) {
-      admin.initializeApp({
+      app = admin.initializeApp({
         credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
         storageBucket,
       });
       console.log(`Firebase Admin SDK initialized. Project: ${projectId}`);
     } else {
       console.log('Firebase Admin SDK already initialized. Reusing existing app.');
+      app = admin.apps[0];
     }
-    db = admin.firestore();
+    db = getFirestore(app);
     console.log('Firestore client created via Admin SDK.');
   } else {
     console.warn('=== FIREBASE CREDENTIALS MISSING ===');
