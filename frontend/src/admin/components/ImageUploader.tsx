@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { signInAnonymously } from 'firebase/auth';
-import { auth, storage } from '../../firebase';
+import { auth, storage } from '../../config/firebase';
 
 interface ImageUploaderProps {
   label: string;
@@ -109,10 +108,11 @@ export default function ImageUploader({
     setIsUploading(true);
 
     try {
-      // Step 1: Ensure user is authenticated in client-side Firebase Auth instance.
-      // Since Admin uses node-session login, client firebase auth instance is null.
-      if (!auth.currentUser) {
-        await signInAnonymously(auth);
+      // Verify Firebase Storage is initialized
+      if (!storage) {
+        setErrorMsg('Firebase Storage is not configured. Check your environment variables.');
+        setIsUploading(false);
+        return;
       }
 
       // Step 2: Process/optimize image

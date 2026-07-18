@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence, signInAnonymously } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { auth, db as firestoreDb } from '../config/firebase';
 import { MockDB } from '../services/MockDB';
 import { FirestoreStudentService } from '../services/FirestoreStudentService';
 
@@ -54,17 +54,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
 
       if (user) {
-        // Check if this email belongs to a mentor
-        const mentors = MockDB.getCollection('mentors') || [];
-        const isMentor = mentors.some((m: any) => m.email === user.email);
+        // Check if this email belongs to a mentor via direct Firestore query
+        // This avoids race conditions where MockDB hasn't finished syncing yet
+        let isMentor = false;
+        try {
+          if (firestoreDb) {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const mentorsRef = collection(firestoreDb, 'mentors');
+            const q = query(mentorsRef, where('email', '==', user.email));
+            const mentorSnapshot = await getDocs(q);
+            isMentor = !mentorSnapshot.empty;
+          } else {
+            // Fallback to MockDB if Firestore isn't initialized
+            const mentors = MockDB.getCollection('mentors') || [];
+            isMentor = mentors.some((m: any) => m.email === user.email);
+          }
+        } catch (err) {
+          console.error("Error checking mentor status:", err);
+        }
 
         if (isMentor) {
           setUserRole('mentor');
-          setLoading(false);
-        } else if (user.isAnonymous) {
-          // Anonymous user (like Admin or Guest)
-          setUserRole(null);
-          setStudentProfile(null);
           setLoading(false);
         } else {
           setUserRole('student');
@@ -136,15 +146,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 500);
         }
       } else {
-        // No user signed in – trigger anonymous sign-in so we have a valid session for Firestore
-        try {
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error("Failed to sign in anonymously:", err);
-          setStudentProfile(null);
-          setUserRole(null);
-          setLoading(false);
-        }
+        // No user signed in
+        setStudentProfile(null);
+        setUserRole(null);
+        setLoading(false);
       }
     });
 

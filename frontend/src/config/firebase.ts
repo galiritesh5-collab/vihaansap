@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDsgiK7NuObjj6l6LX6-LXoQAnjHPnSuZk',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'sri-vihaan-sap-testing.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'sri-vihaan-sap-testing',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'sri-vihaan-sap-testing.appspot.com',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '831254271389',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:831254271389:web:a732ca0a8abf5105c78b74',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-DGHCZR3161',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 let app = null;

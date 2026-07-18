@@ -1,50 +1,32 @@
-import { SAP_COURSES, STUDENT_REVIEWS, FAQS, MOCK_SCHEDULES, MOCK_RECORDINGS, MOCK_ASSIGNMENTS, MOCK_PAYMENTS } from '../data';
-import { MOCK_STUDENTS, MOCK_MENTORS, MOCK_BATCHES, MOCK_BLOGS, MOCK_DOUBTS } from '../admin/mock/data';
-import { BLOGS } from '../data/blogs';
 import { DatabaseSchema } from '../lib/mockdb/schema';
 export type { DatabaseSchema };
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-const initialBlogs = BLOGS.map((b, i) => ({
-  id: 'blog-' + (i + 1),
-  title: b.title,
-  author: b.author,
-  date: b.date,
-  status: 'Published',
-  content: b.content,
-  coverImage: b.image,
-  shortDescription: b.preview,
-  slug: b.slug,
-  categories: [],
-  tags: [],
-  featured: false
-}));
+const API_URL = import.meta.env.VITE_API_URL;
 
 const initialData: DatabaseSchema = {
-  courses: SAP_COURSES,
-  students: MOCK_STUDENTS,
-  mentors: MOCK_MENTORS,
-  batches: MOCK_BATCHES,
+  courses: [],
+  students: [],
+  mentors: [],
+  batches: [],
   batchPlanner: [],
   batchSessions: [],
   studyMaterials: [],
   sessionFeedback: [],
   courseRatings: [],
-  blogs: initialBlogs,
-  reviews: [...STUDENT_REVIEWS],
-  faqs: FAQS,
-  schedules: MOCK_SCHEDULES,
-  recordings: MOCK_RECORDINGS,
-  assignments: MOCK_ASSIGNMENTS,
-  payments: MOCK_PAYMENTS,
-  doubts: MOCK_DOUBTS,
+  blogs: [],
+  reviews: [],
+  faqs: [],
+  schedules: [],
+  recordings: [],
+  assignments: [],
+  payments: [],
+  doubts: [],
   notifications: [],
   events: [],
   leads: [],
   websiteContent: {
     heroTitle: "Master SAP With Real-Time Scenarios",
-    heroSubtitle: "Premium Live Training by Industry Experts. Accelerate your career with real-world scenarios, hands-on server access, and expert placement guidance.",
+    heroSubtitle: "Premium Live Training by Industry Experts.",
     contactEmail: "info@srivihaansap.com",
     contactPhone: "+91 98765 43210"
   },
@@ -62,6 +44,15 @@ import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const getHeaders = async () => {
   const headers: any = { 'Content-Type': 'application/json' };
+  
+  // 1. Check for Admin JWT
+  const adminToken = localStorage.getItem('admin_token');
+  if (adminToken) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
+    return headers;
+  }
+
+  // 2. Fallback to Firebase Client SDK Token
   if (auth.currentUser) {
     const token = await auth.currentUser.getIdToken();
     headers['Authorization'] = `Bearer ${token}`;

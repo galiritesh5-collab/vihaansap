@@ -4,15 +4,19 @@ exports.adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Hardcoded credentials for development as requested
-    const ADMIN_EMAIL = 'info@vihaanconsulting.com';
-    const ADMIN_PASS = 'Vihaan@123';
+    // Admin credentials loaded from environment variables
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+    const ADMIN_PASS = process.env.ADMIN_PASSWORD;
+
+    if (!ADMIN_EMAIL || !ADMIN_PASS) {
+      return res.status(500).json({ success: false, message: 'Admin credentials not configured on server.' });
+    }
 
     if (email === ADMIN_EMAIL && password === ADMIN_PASS) {
-      // Create a simple JWT token
+      // Create a signed JWT using the JWT_SECRET from env
       const token = jwt.sign(
         { role: 'admin', email: ADMIN_EMAIL },
-        process.env.JWT_SECRET || 'fallback_secret_key_123',
+        process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
