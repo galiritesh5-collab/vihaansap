@@ -17,6 +17,35 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getMyRole = async (req, res) => {
+  try {
+    if (!db) {
+      return res.status(500).json({ success: false, message: 'Firestore not initialized' });
+    }
+    const uid = req.user.uid;
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      return res.status(200).json({ success: true, role: data.role || 'student' });
+    } else {
+      // Create user if not exists
+      const newRole = 'student';
+      await userRef.set({
+        email: req.user.email || '',
+        name: req.user.name || '',
+        role: newRole,
+        createdAt: new Date().toISOString()
+      });
+      return res.status(200).json({ success: true, role: newRole });
+    }
+  } catch (error) {
+    console.error('Error fetching/creating my role:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 exports.updateUserRole = async (req, res) => {
   try {
     if (!db) {

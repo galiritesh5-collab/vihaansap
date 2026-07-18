@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db as firestoreDb } from '../config/firebase';
 import { MockDB } from '../services/MockDB';
 import { FirestoreStudentService } from '../services/FirestoreStudentService';
@@ -51,35 +52,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubFirestore = FirestoreStudentService.subscribeToAll();
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      // Must set loading to true while we fetch roles so ProtectedRoutes don't incorrectly block access
+      setLoading(true);
       setCurrentUser(user);
 
       if (user) {
-        // Look up the user's role in the unified 'users' collection in Firestore
+        // Look up the user's role securely via Backend API
         let role: 'admin' | 'mentor' | 'student' = 'student'; // Default to student
         
         try {
-          if (firestoreDb) {
-            const { doc, getDoc, setDoc } = await import('firebase/firestore');
-            const userDocRef = doc(firestoreDb, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-            
-            if (userDoc.exists()) {
-              const data = userDoc.data();
-              if (data.role === 'admin' || data.role === 'mentor' || data.role === 'student') {
-                role = data.role;
-              }
-            } else {
-              // Create default student role for new users
-              await setDoc(userDocRef, {
-                email: user.email,
-                name: user.displayName,
-                role: 'student',
-                createdAt: new Date().toISOString()
-              });
+          // Fetch role from backend to bypass Firestore Client SDK rules limitations
+          const token = await user.getIdToken();
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+          const res = await fetch(`${API_URL}/users/me/role`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
             }
+          });
+          
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.role) {
+              role = json.role;
+              console.log(`[AuthContext] Successfully fetched role from backend: ${role}`);
+            }
+          } else {
+            console.error(`[AuthContext] Backend returned ${res.status} when fetching role.`);
           }
-        } catch (err) {
-          console.error("Error checking user role:", err);
+        } catch (err: any) {
+          console.error("[AuthContext] Error checking/creating user role via API:", err);
         }
 
         setUserRole(role);
