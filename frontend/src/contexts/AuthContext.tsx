@@ -10,7 +10,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   studentProfile: any | null;
-  userRole: 'student' | 'mentor' | null;
+  userRole: 'admin' | 'mentor' | 'student' | null;
   refreshProfile: () => void;
 }
 
@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<any | null>(null);
-  const [userRole, setUserRole] = useState<'student' | 'mentor' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'mentor' | 'student' | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ─── Local profile lookup (from MockDB, which is synced with Firestore) ──
@@ -54,31 +54,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
 
       if (user) {
-        // Check if this email belongs to a mentor via direct Firestore query
-        // This avoids race conditions where MockDB hasn't finished syncing yet
-        let isMentor = false;
+        // Look up the user's role in the unified 'users' collection in Firestore
+        let role: 'admin' | 'mentor' | 'student' = 'student'; // Default to student
+        
         try {
           if (firestoreDb) {
-            const { collection, query, where, getDocs } = await import('firebase/firestore');
-            const mentorsRef = collection(firestoreDb, 'mentors');
-            const q = query(mentorsRef, where('email', '==', user.email));
-            const mentorSnapshot = await getDocs(q);
-            isMentor = !mentorSnapshot.empty;
-          } else {
-            // Fallback to MockDB if Firestore isn't initialized
-            const mentors = MockDB.getCollection('mentors') || [];
-            isMentor = mentors.some((m: any) => m.email === user.email);
+            const { doc, getDoc, setDoc } = await import('firebase/firestore');
+            const userDocRef = doc(firestoreDb, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              if (data.role === 'admin' || data.role === 'mentor' || data.role === 'student') {
+                role = data.role;
+              }
+            } else {
+              // Create default student role for new users
+              await setDoc(userDocRef, {
+                email: user.email,
+                name: user.displayName,
+                role: 'student',
+                createdAt: new Date().toISOString()
+              });
+            }
           }
         } catch (err) {
-          console.error("Error checking mentor status:", err);
+          console.error("Error checking user role:", err);
         }
 
-        if (isMentor) {
-          setUserRole('mentor');
-          setLoading(false);
-        } else {
-          setUserRole('student');
+        setUserRole(role);
 
+        if (role === 'student') {
           // ── Firestore: check/create the student document ──────────────────
           try {
             const existing = await FirestoreStudentService.getStudent(user.uid);
@@ -144,6 +150,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchStudentProfile(user.uid);
             setLoading(false);
           }, 500);
+        } else {
+           // Admin or Mentor role doesn't use studentProfile
+           setStudentProfile(null);
+           setLoading(false);
         }
       } else {
         // No user signed in

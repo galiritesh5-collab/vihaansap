@@ -42,21 +42,21 @@ let isSynced = false;
 import { auth, db as firestoreDb } from '../config/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
+// Get auth token (works for admin, mentor, student since all use Firebase Auth)
 const getHeaders = async () => {
-  const headers: any = { 'Content-Type': 'application/json' };
-  
-  // 1. Check for Admin JWT
-  const adminToken = localStorage.getItem('admin_token');
-  if (adminToken) {
-    headers['Authorization'] = `Bearer ${adminToken}`;
-    return headers;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    } catch (err) {
+      console.warn("Failed to get Firebase token for MockDB sync");
+    }
   }
 
-  // 2. Fallback to Firebase Client SDK Token
-  if (auth.currentUser) {
-    const token = await auth.currentUser.getIdToken();
-    headers['Authorization'] = `Bearer ${token}`;
-  }
   return headers;
 };
 

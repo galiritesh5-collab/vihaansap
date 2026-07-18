@@ -1,33 +1,36 @@
 const admin = require('firebase-admin');
+const config = require('./config');
 
 let db = null;
 
 try {
-  // If the required environment variables are present, initialize the Admin SDK using cert object
-  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Handle newline characters in the private key from env variables
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET
-    });
-    console.log('Firebase Admin SDK initialized successfully.');
-  } else {
-    // If running without credentials (e.g., local dev testing without secrets or Render default),
-    // warn and initialize an empty or default app if needed, though without credentials Firestore calls will fail.
-    console.warn('Firebase Admin credentials missing. Make sure to set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.');
-    // You can also initialize with default credentials if running on GCP/Firebase environments:
-    // admin.initializeApp();
-  }
-  
-  if (admin.apps.length > 0) {
+  const { projectId, clientEmail, privateKey, storageBucket } = config.firebase;
+
+  // Startup diagnostic logging
+  console.log('=== Firebase Admin SDK Initialization ===');
+  console.log(`FIREBASE_PROJECT_ID: ${projectId || 'NOT SET'}`);
+  console.log(`FIREBASE_CLIENT_EMAIL: ${clientEmail ? clientEmail.substring(0, 20) + '...' : 'NOT SET'}`);
+  console.log(`FIREBASE_PRIVATE_KEY: ${privateKey ? 'SET (length: ' + privateKey.length + ')' : 'NOT SET'}`);
+
+  if (projectId && clientEmail && privateKey) {
+    if (admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+        storageBucket,
+      });
+      console.log(`Firebase Admin SDK initialized. Project: ${projectId}`);
+    } else {
+      console.log('Firebase Admin SDK already initialized. Reusing existing app.');
+    }
     db = admin.firestore();
+    console.log('Firestore client created via Admin SDK.');
+  } else {
+    console.warn('=== FIREBASE CREDENTIALS MISSING ===');
+    console.warn('Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in environment.');
   }
 } catch (error) {
-  console.error('Error initializing Firebase Admin:', error);
+  console.error('=== FIREBASE INIT ERROR ===');
+  console.error('Message:', error.message);
 }
 
 module.exports = { admin, db };

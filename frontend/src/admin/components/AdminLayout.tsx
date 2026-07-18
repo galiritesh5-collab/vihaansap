@@ -7,18 +7,16 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandingConfig } from '../../hooks/useBrandingConfig';
-import { useAdminAuth } from '../hooks/useAdminAuth';
 
 export default function AdminLayout() {
-  const { user: adminUser, loading: adminLoading, logout: adminLogout } = useAdminAuth();
   const { currentUser, userRole, loading: authLoading, logout: authLogout } = useAuth();
   const { config: brandingConfig } = useBrandingConfig();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const isLoading = adminLoading || authLoading;
-  const isAuthorized = adminUser || (currentUser && userRole === 'mentor');
+  const isLoading = authLoading;
+  const isAuthorized = currentUser && (userRole === 'admin' || userRole === 'mentor');
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>;
@@ -38,7 +36,6 @@ export default function AdminLayout() {
   }
 
   const handleLogout = async () => {
-    if (adminUser) await adminLogout();
     if (currentUser) await authLogout();
     // Declarative Navigate handles the redirect when state updates
   };
@@ -58,6 +55,7 @@ export default function AdminLayout() {
     { name: 'Calendar', path: '/admin/calendar', icon: CalendarIcon },
     { name: 'Notifications', path: '/admin/notifications', icon: Bell },
     { name: 'Doubt Support', path: '/admin/doubts', icon: HelpCircle },
+    { name: 'Role Management', path: '/admin/roles', icon: ShieldCheck },
     { name: 'Branding & Contact', path: '/admin/branding', icon: Palette },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
@@ -159,14 +157,14 @@ export default function AdminLayout() {
               onClick={() => setDropdownOpen(!dropdownOpen)}
             >
               <div className="hidden md:block text-right">
-                <p className="text-sm font-bold text-slate-800 leading-none">{adminUser?.name || currentUser?.displayName}</p>
-                <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mt-1">{adminUser?.role || userRole}</p>
+                <p className="text-sm font-bold text-slate-800 leading-none">{currentUser?.displayName}</p>
+                <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mt-1">{userRole}</p>
               </div>
-              {(adminUser?.avatar || currentUser?.photoURL) ? (
-                 <img src={adminUser?.avatar || currentUser?.photoURL} alt="Profile" className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 object-cover" />
+              {currentUser?.photoURL ? (
+                 <img src={currentUser?.photoURL} alt="Profile" className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 object-cover" />
               ) : (
                  <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">
-                   {(adminUser?.name || currentUser?.displayName || '?').charAt(0).toUpperCase()}
+                   {(currentUser?.displayName || '?').charAt(0).toUpperCase()}
                  </div>
               )}
               <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
@@ -178,8 +176,8 @@ export default function AdminLayout() {
                 <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)}></div>
                 <div className="absolute right-0 top-12 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-50 py-1 animate-in fade-in zoom-in duration-200">
                   <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-sm font-bold text-slate-800 truncate">{adminUser?.name || currentUser?.displayName}</p>
-                    <p className="text-xs text-slate-500 truncate">{adminUser?.email || currentUser?.email}</p>
+                    <p className="text-sm font-bold text-slate-800 truncate">{currentUser?.displayName}</p>
+                    <p className="text-xs text-slate-500 truncate">{currentUser?.email}</p>
                   </div>
                   <div className="p-1">
                     <button

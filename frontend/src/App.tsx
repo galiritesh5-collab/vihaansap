@@ -63,6 +63,7 @@ import AdminSettings from './admin/pages/Settings';
 import ServerAccessAdmin from './admin/pages/ServerAccessAdmin';
 import BrandingAdmin from './admin/pages/BrandingAdmin';
 import AccountsAdmin from './admin/pages/Accounts';
+import AdminRoleManagement from './admin/pages/RoleManagement';
 
 // Helper component to scroll window to top on route change
 function ScrollToTop() {
@@ -195,6 +196,7 @@ export default function App() {
           <Route path="accounts" element={<AccountsAdmin />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="branding" element={<BrandingAdmin />} />
+          <Route path="roles" element={<AdminRoleManagement />} />
         </Route>
       </Routes>
 

@@ -17,8 +17,10 @@ app.use(morgan('dev'));
 // Core DB API for MockDB replacement
 app.use('/api/db', require('./routes/db.routes'));
 
-// Auth routes
-app.use('/api/auth', require('./routes/auth.routes'));
+// User Management API
+app.use('/api/users', require('./routes/user.routes'));
+
+// Auth routes removed - Firebase authentication is used.
 
 // Health check
 app.get('/health', (req, res) => {
