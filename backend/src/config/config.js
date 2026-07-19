@@ -12,7 +12,7 @@ const config = {
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID ? process.env.FIREBASE_PROJECT_ID.trim() : undefined,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL ? process.env.FIREBASE_CLIENT_EMAIL.trim() : undefined,
-    // Render stores private key with escaped \n — replace them with real newlines
+    // Handle both \n (local .env) and \\n (Render env vars) formats
     privateKey: process.env.FIREBASE_PRIVATE_KEY
       ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').trim()
       : undefined,

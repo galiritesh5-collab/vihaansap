@@ -1,3 +1,1 @@
-// Admin module barrel exports
-export { AdminAuthService } from './services/AdminAuthService';
-export { useAdminAuth } from './hooks/useAdminAuth';
+// Admin feature modules are imported directly by the active router.

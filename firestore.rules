@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function admin() {
+      return signedIn() && request.auth.token.email in [
+        'riteshgali45@gmail.com',
+        'vihaansapconsultancy@gmail.com'
+      ];
+    }
+
+    match /courses/{document} { allow read: if true; allow write: if admin(); }
+    match /blogs/{document} { allow read: if true; allow write: if admin(); }
+    match /reviews/{document} { allow read: if true; allow write: if admin(); }
+    match /faqs/{document} { allow read: if true; allow write: if admin(); }
+    match /students/{uid} { allow read, write: if admin() || (signedIn() && request.auth.uid == uid); }
+    match /config/{document} { allow read: if true; allow write: if admin(); }
+    match /{document=**} { allow read, write: if admin(); }
+  }
+}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
-import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { MockDB } from '../services/MockDB';
 
 interface ServerAccessEnquiryFormProps {
   onSuccess?: () => void;
@@ -39,7 +38,7 @@ export default function ServerAccessEnquiryForm({ onSuccess }: ServerAccessEnqui
       };
       
       try {
-        await addDoc(collection(db, 'server_enquiries'), docData);
+        await MockDB.addItem('serverEnquiries', docData);
       } catch (fbError) {
         console.log('Firebase saving failed, falling back to local or mock', fbError);
         // Fallback or just ignore if firebase rules fail

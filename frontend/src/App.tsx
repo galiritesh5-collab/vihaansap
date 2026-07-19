@@ -18,8 +18,6 @@ import BlogDetail from './pages/BlogDetail';
 import About from './pages/About';
 import ServerAccess from './pages/ServerAccess';
 import SignIn from './pages/SignIn';
-import StudentDashboardLegacy from './pages/StudentDashboard';
-import AdminDashboard from './pages/AdminDashboard';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
 import CookiePolicy from './pages/CookiePolicy';
@@ -147,8 +145,9 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/server-access" element={<ServerAccess />} />
           <Route path="/sign-in" element={<SignIn />} />
-          <Route path="/student-dashboard" element={<StudentDashboardLegacy />} />
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          {/* Retain legacy URLs without retaining their localStorage-only authorization model. */}
+          <Route path="/student-dashboard" element={<Navigate to="/student/dashboard" replace />} />
+          <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-conditions" element={<TermsConditions />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />

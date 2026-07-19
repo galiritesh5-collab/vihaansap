@@ -64,12 +64,7 @@ export class MockDB {
   static async initAsync() {
     if (isSynced) return;
     try {
-      await fetch(`${API_URL}/db/sync`, {
-        method: 'POST',
-        headers: await getHeaders(),
-        body: JSON.stringify(initialData)
-      });
-      const res = await fetch(`${API_URL}/db/all`, { headers: await getHeaders() });
+      const res = await fetch(`${API_URL}/db/public`);
       const json = await res.json();
       if (json.success && json.data) {
         cachedDB = { ...cachedDB, ...json.data };
@@ -83,6 +78,19 @@ export class MockDB {
       });
       isSynced = true;
       window.dispatchEvent(new Event('db_updated'));
+    }
+  }
+
+  /** Load protected operational data after the backend has verified an admin. */
+  static async loadAdminData() {
+    try {
+      const res = await fetch(`${API_URL}/db/all`, { headers: await getHeaders() });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Unable to load CMS data');
+      cachedDB = { ...cachedDB, ...json.data };
+      this.set(cachedDB);
+    } catch (err) {
+      console.error('Unable to load protected CMS data', err);
     }
   }
 
@@ -118,11 +126,16 @@ export class MockDB {
     (db[collection] as any[]).push(item);
     this.set(db);
 
-    // Backend update (now handled by Firebase Admin SDK on the server)
+    // Public forms use narrowly scoped backend endpoints. CMS writes remain admin-only.
     try {
-      await fetch(`${API_URL}/db/${String(collection)}`, {
+      const publicType = collection === 'leads'
+        ? 'leads'
+        : collection === 'serverEnquiries'
+          ? 'server-enquiries'
+          : null;
+      await fetch(publicType ? `${API_URL}/public/${publicType}` : `${API_URL}/db/${String(collection)}`, {
         method: 'POST',
-        headers: await getHeaders(),
+        headers: publicType ? { 'Content-Type': 'application/json' } : await getHeaders(),
         body: JSON.stringify(item)
       });
     } catch (err) {

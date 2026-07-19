@@ -89,6 +89,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUserRole(role);
 
+        if (role === 'admin') {
+          await MockDB.loadAdminData();
+        }
+
         if (role === 'student') {
           // ── Firestore: check/create the student document ──────────────────
           try {
@@ -221,4 +225,3 @@ export function useAuth() {
   }
   return context;
 }
-

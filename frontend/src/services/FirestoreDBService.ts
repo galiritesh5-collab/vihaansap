@@ -93,6 +93,14 @@ export class FirestoreDBService {
       );
       this.unsubscribers.push(unsub);
     }
+
+    const websiteConfigUnsubscribe = onSnapshot(doc(db, 'config', 'website'), (snapshot) => {
+      if (!snapshot.exists()) return;
+      const currentDb = MockDB.get();
+      currentDb.websiteContent = snapshot.data() as any;
+      MockDB.set(currentDb);
+    }, (error) => console.error('[FirestoreDBService] Error syncing website settings:', error));
+    this.unsubscribers.push(websiteConfigUnsubscribe);
   }
 
   static unsubscribeAll(): void {

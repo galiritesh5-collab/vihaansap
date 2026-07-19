@@ -35,7 +35,7 @@ export default function ServerAccessAdmin() {
   const [statusFilter, setStatusFilter] = useState('All');
   
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'server_enquiries'), (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, 'serverEnquiries'), (snapshot) => {
       const eqData: ServerEnquiry[] = [];
       snapshot.forEach(doc => {
         eqData.push({ id: doc.id, ...doc.data() } as ServerEnquiry);
@@ -69,7 +69,7 @@ export default function ServerAccessAdmin() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const docRef = doc(db, 'server_enquiries', id);
+      const docRef = doc(db, 'serverEnquiries', id);
       await updateDoc(docRef, { status: newStatus });
     } catch (e) {
       console.error(e);
@@ -80,7 +80,7 @@ export default function ServerAccessAdmin() {
   const handleDeleteEnquiry = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
     try {
-      await deleteDoc(doc(db, 'server_enquiries', id));
+      await deleteDoc(doc(db, 'serverEnquiries', id));
     } catch (e) {
       console.error(e);
       setEnquiries(prev => prev.filter(eq => eq.id !== id));

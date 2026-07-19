@@ -1,0 +1,452 @@
+{
+  "exportedAt": "2026-07-19T18:27:36.833Z",
+  "collections": {
+    "courses": [],
+    "blogs": [],
+    "reviews": [],
+    "faqs": [],
+    "students": [
+      {
+        "id": "2WS9TDLV10NymnOruMUusXbQAHm2",
+        "createdAt": "2026-07-13T09:13:18.673Z",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocIzjO8I-lJCF554N2nu88HCPUr5l7O4710QaaV5OaC9LZQfbg=s96-c",
+        "uid": "2WS9TDLV10NymnOruMUusXbQAHm2",
+        "loginMethod": "Google",
+        "name": "Narina",
+        "avatar": "https://lh3.googleusercontent.com/a/ACg8ocIzjO8I-lJCF554N2nu88HCPUr5l7O4710QaaV5OaC9LZQfbg=s96-c",
+        "email": "narina303154@gmail.com",
+        "status": "Active",
+        "completedModules": [],
+        "courseStatus": "In Progress",
+        "progress": 0,
+        "education": "",
+        "city": "",
+        "currentStatus": "",
+        "phone": "6301299810",
+        "profileCompleted": true,
+        "age": 18,
+        "batch": "fi",
+        "course": "SAP SD (Sales & Distribution)",
+        "lastLogin": "2026-07-14T05:19:58.782Z",
+        "loginCount": 37,
+        "updatedAt": {
+          "_seconds": 1784006397,
+          "_nanoseconds": 597000000
+        }
+      },
+      {
+        "id": "TivJAQ28MvXb5KNGByk0uA0b3M43",
+        "createdAt": "2026-07-13T10:20:43.004Z",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocKDTukC9igWj5ZpREEumD0BEIqmacoDm4klLN26w0ZviiXP2Q=s96-c",
+        "uid": "TivJAQ28MvXb5KNGByk0uA0b3M43",
+        "loginMethod": "Google",
+        "name": "Ritesh Gali",
+        "avatar": "https://lh3.googleusercontent.com/a/ACg8ocKDTukC9igWj5ZpREEumD0BEIqmacoDm4klLN26w0ZviiXP2Q=s96-c",
+        "email": "riteshgali45@gmail.com",
+        "status": "Pending",
+        "role": "Student",
+        "education": "",
+        "city": "",
+        "currentStatus": "",
+        "phone": "6301299810",
+        "profileCompleted": true,
+        "age": 18,
+        "updatedAt": {
+          "_seconds": 1783938168,
+          "_nanoseconds": 200000000
+        },
+        "lastLogin": {
+          "_seconds": 1784376715,
+          "_nanoseconds": 199000000
+        },
+        "loginCount": 26
+      },
+      {
+        "id": "UPfuJq1x7kR3X03JGTCst47JSNH3",
+        "createdAt": "2026-07-19T15:59:51.430Z",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocKNWipY4WvHXupr5xw7GllZBbKJGKOgusZkNgxi8v0dVz0Niw=s96-c",
+        "uid": "UPfuJq1x7kR3X03JGTCst47JSNH3",
+        "loginMethod": "Google",
+        "name": "Md Zakir",
+        "avatar": "https://lh3.googleusercontent.com/a/ACg8ocKNWipY4WvHXupr5xw7GllZBbKJGKOgusZkNgxi8v0dVz0Niw=s96-c",
+        "email": "zakirrisback@gmail.com",
+        "status": "Pending",
+        "education": "",
+        "city": "",
+        "currentStatus": "",
+        "phone": "9049943",
+        "profileCompleted": true,
+        "age": 33,
+        "updatedAt": {
+          "_seconds": 1784476812,
+          "_nanoseconds": 193000000
+        },
+        "lastLogin": {
+          "_seconds": 1784478370,
+          "_nanoseconds": 836000000
+        },
+        "loginCount": 8
+      },
+      {
+        "id": "aUt1Bh7a6KR9Da2JWKLiTlKCO9T2",
+        "createdAt": "2026-07-13T10:24:54.860Z",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocJec6Hv55oIiA5JgRnHhBfBHeNL9bz2bi9szoY0AOFjqX_CSBU7ow=s96-c",
+        "uid": "aUt1Bh7a6KR9Da2JWKLiTlKCO9T2",
+        "loginMethod": "Google",
+        "name": "Gali Sampath Ritesh NVN",
+        "avatar": "https://lh3.googleusercontent.com/a/ACg8ocJec6Hv55oIiA5JgRnHhBfBHeNL9bz2bi9szoY0AOFjqX_CSBU7ow=s96-c",
+        "email": "gsrjaijai@gmail.com",
+        "status": "Pending",
+        "role": "Student",
+        "education": "",
+        "city": "",
+        "currentStatus": "",
+        "phone": "6301299810",
+        "profileCompleted": true,
+        "age": 18,
+        "lastLogin": "2026-07-14T05:35:05.622Z",
+        "loginCount": 31,
+        "updatedAt": {
+          "_seconds": 1784007304,
+          "_nanoseconds": 410000000
+        }
+      },
+      {
+        "id": "urPcQxw80JQ7lhVnUy8TtlcQYPL2",
+        "createdAt": "2026-07-18T11:34:50.165Z",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocJBNGK2epwPtSeu2z3NsaKpZIrcUGExoZ7dqwtLvisUi_Z4mQ=s96-c",
+        "uid": "urPcQxw80JQ7lhVnUy8TtlcQYPL2",
+        "loginMethod": "Google",
+        "name": "Ritesh Gali",
+        "avatar": "https://lh3.googleusercontent.com/a/ACg8ocJBNGK2epwPtSeu2z3NsaKpZIrcUGExoZ7dqwtLvisUi_Z4mQ=s96-c",
+        "email": "galiritesh5@gmail.com",
+        "status": "Pending",
+        "education": "",
+        "city": "vij",
+        "currentStatus": "",
+        "phone": "6301299810",
+        "profileCompleted": true,
+        "age": 18,
+        "updatedAt": {
+          "_seconds": 1784374500,
+          "_nanoseconds": 345000000
+        },
+        "lastLogin": {
+          "_seconds": 1784481931,
+          "_nanoseconds": 433000000
+        },
+        "loginCount": 10
+      }
+    ],
+    "mentors": [
+      {
+        "id": "1784141237893",
+        "notes": "",
+        "role": "mentor",
+        "assignedBatchIds": [],
+        "bio": "",
+        "experience": "5",
+        "qualification": "btecgh",
+        "profilePhoto": "",
+        "phone": "6301299810",
+        "name": "ritesh",
+        "specialization": "fico",
+        "designation": "sap",
+        "email": "gsrjaijai@gmail.com",
+        "status": "Active",
+        "updatedAt": {
+          "_seconds": 1784141235,
+          "_nanoseconds": 272000000
+        }
+      }
+    ],
+    "batches": [],
+    "leads": [
+      {
+        "id": "5ghioqqh5",
+        "isArchived": false,
+        "courseInterested": "SAP FICO",
+        "history": [
+          {
+            "id": "ktue17bmd",
+            "date": "2026-07-15T18:42:50.087Z",
+            "action": "Lead Created",
+            "details": "Source: Homepage Fast Inquiry"
+          }
+        ],
+        "source": "Homepage Fast Inquiry",
+        "message": "ritesh",
+        "priority": "High",
+        "createdAt": "2026-07-15T18:42:50.087Z",
+        "phone": "6301299810",
+        "name": "GALI SAMPATH RITESH",
+        "email": "riteshgali@gmail.com",
+        "status": "New",
+        "updatedAt": {
+          "_seconds": 1784140966,
+          "_nanoseconds": 834000000
+        }
+      },
+      {
+        "id": "950j10azi",
+        "isArchived": false,
+        "courseInterested": "SAP FICO",
+        "history": [
+          {
+            "id": "ccziriawy",
+            "date": "2026-07-15T18:43:36.730Z",
+            "action": "Lead Created",
+            "details": "Source: Homepage Fast Inquiry"
+          }
+        ],
+        "source": "Homepage Fast Inquiry",
+        "message": "Hii",
+        "priority": "High",
+        "createdAt": "2026-07-15T18:43:36.730Z",
+        "phone": "9032554798",
+        "name": "Mucharla Jagadeesh",
+        "email": "maari.pvt.ltd@gmail.com",
+        "status": "New",
+        "updatedAt": {
+          "_seconds": 1784141017,
+          "_nanoseconds": 876000000
+        }
+      },
+      {
+        "id": "w1x3urway",
+        "isArchived": false,
+        "courseInterested": "SAP FICO (Financial & Controlling)",
+        "history": [
+          {
+            "id": "swhyxkd9i",
+            "date": "2026-07-15T18:42:05.642Z",
+            "action": "Lead Created",
+            "details": "Source: Book Free Demo"
+          }
+        ],
+        "source": "Book Free Demo",
+        "message": "",
+        "priority": "High",
+        "createdAt": "2026-07-15T18:42:05.642Z",
+        "phone": "6301299810",
+        "name": "ritesh gali",
+        "email": "ritesh@gmail.com",
+        "status": "New",
+        "updatedAt": {
+          "_seconds": 1784140922,
+          "_nanoseconds": 674000000
+        }
+      },
+      {
+        "id": "yvrokuuio",
+        "isArchived": false,
+        "courseInterested": "SAP FICO",
+        "history": [
+          {
+            "id": "015ominbt",
+            "date": "2026-07-15T18:42:27.660Z",
+            "action": "Lead Created",
+            "details": "Source: Homepage Fast Inquiry"
+          }
+        ],
+        "source": "Homepage Fast Inquiry",
+        "message": "helo",
+        "priority": "High",
+        "createdAt": "2026-07-15T18:42:27.660Z",
+        "phone": "6301299810",
+        "name": "GALI SAMPATH RITESH",
+        "email": "riteshgali@gmail.com",
+        "status": "New",
+        "updatedAt": {
+          "_seconds": 1784140944,
+          "_nanoseconds": 430000000
+        }
+      }
+    ],
+    "serverEnquiries": [],
+    "accounts": [],
+    "payments": [],
+    "users": [
+      {
+        "id": "TivJAQ28MvXb5KNGByk0uA0b3M43",
+        "createdAt": "2026-07-18T11:36:39.212Z",
+        "name": "Ritesh Gali",
+        "email": "riteshgali45@gmail.com",
+        "role": "admin\n",
+        "status": "active"
+      },
+      {
+        "id": "aUt1Bh7a6KR9Da2JWKLiTlKCO9T2",
+        "uid": "aUt1Bh7a6KR9Da2JWKLiTlKCO9T2",
+        "email": "gsrjaijai@gmail.com",
+        "displayName": "Gali Sampath Ritesh NVN",
+        "photoURL": "https://lh3.googleusercontent.com/a/ACg8ocJec6Hv55oIiA5JgRnHhBfBHeNL9bz2bi9szoY0AOFjqX_CSBU7ow=s96-c",
+        "role": "pending_student",
+        "createdAt": "2026-07-12T16:03:11.775Z"
+      },
+      {
+        "id": "urPcQxw80JQ7lhVnUy8TtlcQYPL2",
+        "email": "galiritesh5@gmail.com",
+        "createdAt": "2026-07-18T11:34:49.723Z",
+        "role": "student",
+        "name": "Ritesh Gali"
+      }
+    ],
+    "config": [
+      {
+        "id": "branding",
+        "primaryMobile": "+91 70759 99336",
+        "secondaryMobile": "",
+        "whatsappNumber": "+91 70759 99336",
+        "supportEmail": "info@srivihaanconsulting.com",
+        "generalEmail": "info@srivihaanconsulting.com",
+        "salesEmail": "",
+        "address": "",
+        "googleMapsLink": "",
+        "businessHours": "Mon-Sat 9:00 AM - 6:00 PM",
+        "socialLinks": [
+          {
+            "id": "fb",
+            "platform": "Facebook",
+            "url": "https://facebook.com",
+            "enabled": true,
+            "order": 1
+          },
+          {
+            "id": "ig",
+            "platform": "Instagram",
+            "url": "https://instagram.com",
+            "enabled": true,
+            "order": 2
+          },
+          {
+            "id": "li",
+            "platform": "LinkedIn",
+            "url": "https://linkedin.com",
+            "enabled": true,
+            "order": 3
+          }
+        ]
+      },
+      {
+        "id": "serverAccess",
+        "hero": {
+          "title": "SAP S/4HANA Server Access",
+          "subtitle": "Get instant access to professional SAP S/4HANA practice servers for hands-on learning and real-world SAP practice."
+        },
+        "serverDetails": {
+          "name": "SAP S/4HANA",
+          "version": "Latest Version",
+          "landscape": "Practice Server",
+          "accessType": "Remote",
+          "availability": "24/7",
+          "status": "Active",
+          "description": "Professional practice servers for hands-on learning."
+        },
+        "indianPricing": [
+          {
+            "id": "ind-1",
+            "duration": "1 Month",
+            "price": "₹1000",
+            "description": "Standard Access",
+            "order": 1
+          },
+          {
+            "id": "ind-2",
+            "duration": "2 Months",
+            "price": "₹1800",
+            "description": "Standard Access",
+            "order": 2
+          },
+          {
+            "id": "ind-3",
+            "duration": "3 Months",
+            "price": "₹2400",
+            "description": "Standard Access",
+            "order": 3
+          },
+          {
+            "id": "ind-4",
+            "duration": "6 Months",
+            "price": "₹4200",
+            "description": "Standard Access",
+            "order": 4
+          },
+          {
+            "id": "ind-5",
+            "duration": "12 Months",
+            "price": "₹7200",
+            "description": "Standard Access",
+            "order": 5
+          }
+        ],
+        "internationalPricing": [
+          {
+            "id": "int-1",
+            "duration": "1 Month",
+            "price": "$30",
+            "description": "Standard Access",
+            "order": 1
+          },
+          {
+            "id": "int-2",
+            "duration": "2 Months",
+            "price": "$50",
+            "description": "Standard Access",
+            "order": 2
+          },
+          {
+            "id": "int-3",
+            "duration": "3 Months",
+            "price": "$60",
+            "description": "Standard Access",
+            "order": 3
+          },
+          {
+            "id": "int-4",
+            "duration": "6 Months",
+            "price": "$90",
+            "description": "Standard Access",
+            "order": 4
+          },
+          {
+            "id": "int-5",
+            "duration": "12 Months",
+            "price": "$150",
+            "description": "Standard Access",
+            "order": 5
+          }
+        ],
+        "paymentDetails": {
+          "upiId": "Google Pay, PhonePe, UPI",
+          "accountName": "",
+          "phoneNumber": "+91 7416797921",
+          "whatsappNumber": "+91 7416797921",
+          "email": "k.sapcon@gmail.com",
+          "instructions": "You can pay using Google Pay, PhonePe or UPI.\nAfter payment,\nsend the payment screenshot to WhatsApp or Email.",
+          "activationNotes": "Server credentials will be shared after payment verification."
+        },
+        "features": [
+          "24x7 Cloud Access",
+          "Latest SAP Version",
+          "Multiple SAP Modules",
+          "Dedicated User Login",
+          "Practice Company Data",
+          "Real-Time Business Scenarios",
+          "Technical Support",
+          "Remote Login",
+          "Fast Activation",
+          "Secure Environment"
+        ],
+        "faq": [],
+        "contact": {
+          "phone": "+91 7416797921",
+          "whatsapp": "+91 7416797921",
+          "email": "k.sapcon@gmail.com",
+          "officeTiming": "9 AM to 6 PM",
+          "supportTiming": "24/7"
+        }
+      }
+    ]
+  }
+}

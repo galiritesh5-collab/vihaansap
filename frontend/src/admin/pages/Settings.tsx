@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
+import { db } from '../../config/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Save } from 'lucide-react';
 
 export default function Settings() {
-  const db = useDB();
+  const database = useDB();
   const [formData, setFormData] = useState({
     heroTitle: '',
     heroSubtitle: '',
@@ -13,21 +15,27 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    if (db.websiteContent) {
-      setFormData(db.websiteContent);
+    if (database.websiteContent) {
+      setFormData(database.websiteContent);
     }
-  }, [db.websiteContent]);
+  }, [database.websiteContent]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const currentDB = MockDB.get();
     currentDB.websiteContent = formData;
     MockDB.set(currentDB);
-    alert('Settings saved successfully!');
+    try {
+      await setDoc(doc(db, 'config', 'website'), { ...formData, updatedAt: serverTimestamp() }, { merge: true });
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Unable to save website settings', error);
+      alert('Settings could not be saved. Please check your administrator access.');
+    }
   };
 
   return (

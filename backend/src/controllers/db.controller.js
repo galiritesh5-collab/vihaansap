@@ -13,6 +13,28 @@ const COLLECTIONS = [
   'notifications', 'events', 'leads', 'serverEnquiries', 'accounts', 'serverPayments'
 ];
 
+const PUBLIC_COLLECTIONS = ['courses', 'blogs', 'reviews', 'faqs'];
+const ALLOWED_COLLECTIONS = new Set(COLLECTIONS);
+
+function isAllowedCollection(collectionName) {
+  return typeof collectionName === 'string' && ALLOWED_COLLECTIONS.has(collectionName);
+}
+
+exports.getPublicContent = async (req, res, next) => {
+  try {
+    if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
+
+    const data = {};
+    await Promise.all(PUBLIC_COLLECTIONS.map(async (collectionName) => {
+      const snapshot = await db.collection(collectionName).get();
+      data[collectionName] = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }));
+    }));
+    return res.status(200).json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 exports.getAll = async (req, res, next) => {
   try {
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
@@ -39,6 +61,9 @@ exports.getAll = async (req, res, next) => {
 exports.getCollection = async (req, res, next) => {
   try {
     const { collection } = req.params;
+    if (!isAllowedCollection(collection)) {
+      return res.status(404).json({ success: false, error: 'Unknown collection' });
+    }
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
 
     const snapshot = await db.collection(collection).get();
@@ -52,6 +77,9 @@ exports.getCollection = async (req, res, next) => {
 exports.createDocument = async (req, res, next) => {
   try {
     const { collection } = req.params;
+    if (!isAllowedCollection(collection)) {
+      return res.status(404).json({ success: false, error: 'Unknown collection' });
+    }
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
 
     const newItem = { ...req.body };
@@ -73,6 +101,9 @@ exports.createDocument = async (req, res, next) => {
 exports.updateDocument = async (req, res, next) => {
   try {
     const { collection, id } = req.params;
+    if (!isAllowedCollection(collection)) {
+      return res.status(404).json({ success: false, error: 'Unknown collection' });
+    }
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
 
     await db.collection(collection).doc(id).set({
@@ -90,6 +121,9 @@ exports.updateDocument = async (req, res, next) => {
 exports.deleteDocument = async (req, res, next) => {
   try {
     const { collection, id } = req.params;
+    if (!isAllowedCollection(collection)) {
+      return res.status(404).json({ success: false, error: 'Unknown collection' });
+    }
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
 
     await db.collection(collection).doc(id).delete();

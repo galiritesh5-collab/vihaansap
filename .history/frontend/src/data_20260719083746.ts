@@ -595,10 +595,10 @@ export const FAQS = [
 ];
 
 // Mock dashboard schedules, videos, assignments, payments for students/admins
-export const MOCK_SCHEDULES: ClassSchedule[] = [];
+export co22nst MOCK_SCHEDULES: ClassSchedule[] = [];
 
 export const MOCK_RECORDINGS: Recording[] = [];
 
 export const MOCK_ASSIGNMENTS: Assignment[] = [];
 
-export const MOCK_PAYMENTS: PaymentRecord[] = [];
+export const MOCK_PAYMENTS: PaymentRecord[] = [];222222

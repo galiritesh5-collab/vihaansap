@@ -19,6 +19,7 @@ app.use('/api/db', require('./routes/db.routes'));
 
 // User Management API
 app.use('/api/users', require('./routes/user.routes'));
+app.use('/api/public', require('./routes/public.routes'));
 
 // Auth routes removed - Firebase authentication is used.
 
