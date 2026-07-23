@@ -56,12 +56,12 @@ export default function BatchWorkspace() {
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
 
       {/* Review Submission Modal */}
-      {showFeedbackModal && (
+      {(showFeedbackModal || (feedbackRequested && !hasSubmittedReview)) && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-slate-800">Submit Your Review</h3>
-              <button onClick={() => setShowFeedbackModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5" /></button>
+              
             </div>
             {reviewSubmitted ? (
               <div className="text-center py-6">
@@ -84,7 +84,13 @@ export default function BatchWorkspace() {
                   status: 'Pending',
                   date: new Date().toISOString()
                 });
-                setReviewSubmitted(true);
+                  // Remove the notification if it exists
+                  const reqNotif = db.notifications?.find(n => n.targetId === batchId && n.isFeedbackRequest);
+                  if (reqNotif) {
+                    MockDB.deleteItem('notifications', reqNotif.id);
+                  }
+                  setReviewSubmitted(true);
+
               }} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Rating</label>

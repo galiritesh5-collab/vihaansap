@@ -7,9 +7,18 @@ export default function Reviews() {
   const db = useDB();
   const [editingReview, setEditingReview] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('Pending');
+  const [batchFilter, setBatchFilter] = useState<string>('All');
 
   const pendingCount = db.reviews?.filter((r: any) => !r.status || r.status === 'Pending').length || 0;
-  const filteredReviews = statusFilter === 'All' ? db.reviews : db.reviews?.filter((r: any) => r.status === statusFilter) || [];
+  const filteredReviews = db.reviews?.filter((r: any) => {
+    const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
+    const matchesBatch = batchFilter === 'All' || r.batchId === batchFilter;
+    return matchesStatus && matchesBatch;
+  }) || [];
+  
+  // Extract unique batches for the filter dropdown
+  const uniqueBatches = Array.from(new Set(db.reviews?.map((r: any) => r.batchId).filter(Boolean)));
+
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,14 +59,29 @@ export default function Reviews() {
         </button>
       </div>
 
-      {/* Status Filter Bar */}
-      <div className="flex gap-2">
-        {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(s => (
-          <button key={s} onClick={() => setStatusFilter(s)} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${ statusFilter === s ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' }`}>
-            {s} {s === 'Pending' && pendingCount > 0 ? `(${pendingCount})` : ''}
-          </button>
-        ))}
+      
+      {/* Filters Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+          {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${ statusFilter === s ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900' }`}>
+              {s} {s === 'Pending' && pendingCount > 0 ? `(${pendingCount})` : ''}
+            </button>
+          ))}
+        </div>
+        
+        <select 
+          value={batchFilter} 
+          onChange={(e) => setBatchFilter(e.target.value)}
+          className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="All">All Batches</option>
+          {uniqueBatches.map(b => (
+            <option key={b as string} value={b as string}>{db.batches?.find(batch => batch.id === b)?.name || b}</option>
+          ))}
+        </select>
       </div>
+
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse">
@@ -78,7 +102,10 @@ export default function Reviews() {
                   <p className="text-sm font-bold text-slate-800">{review.name}</p>
                   <p className="text-xs text-slate-500">{review.role} @ {review.company}</p>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{review.course || review.module}</td>
+                <td className="px-6 py-4">
+                  <p className="text-sm font-semibold text-slate-800">{review.course || review.module}</p>
+                  <p className="text-xs text-slate-500">{db.batches?.find(b => b.id === review.batchId)?.name || review.batchId}</p>
+                </td>
                 <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{review.text}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{review.rating} / 5</td>
                 <td className="px-6 py-4">

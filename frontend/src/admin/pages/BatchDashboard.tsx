@@ -5,6 +5,8 @@ import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, Message
 import { MockDB } from '../../services/MockDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { BatchPlannerWeek, BatchSession, StudyMaterial, CourseRating, SessionFeedback } from '../../types';
+import { storage } from '../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 function TodaySessionTab({ batchId }: { batchId: string }) {
   const db = useDB();
@@ -646,24 +648,18 @@ function OverviewTab({ batchId }: { batchId: string }) {
   const notifications = db.notifications?.filter(n => n.target === 'Batch' && n.targetId === batchId) || [];
   const latestAnnouncement = notifications.length > 0 ? notifications[notifications.length - 1] : null;
 
-  // calculate completion based on sessions or just random
-  const completionPercentage = Math.round((sessions.filter(s => s.status === 'Completed').length / (sessions.length || 1)) * 100);
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Batch Overview</h3>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Students</p>
           <p className="text-2xl font-black text-indigo-600">{students.length}</p>
         </div>
-        <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Completion</p>
-          <p className="text-2xl font-black text-indigo-600">{completionPercentage}%</p>
-        </div>
+
         <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pending Doubts</p>
           <p className="text-2xl font-black text-orange-500">{pendingDoubts}</p>
@@ -832,10 +828,11 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
 function StudyMaterialsTab({ batchId }: { batchId: string }) {
   const db = useDB();
   const materials = db.studyMaterials?.filter(m => m.batchId === batchId) || [];
-  const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
-  const [editing, setEditing] = useState<Partial<StudyMaterial> | null>(null);
+  const [editing, setEditing] = useState<Partial<any> | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
       if (editing.id) {
@@ -853,39 +850,42 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    
-    // Process each file using FileReader to create a real downloadable data URL
-    Array.from(files as FileList).forEach((file: File) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(`Uploading ${file.name}...`);
+    try {
+      const storageRef = ref(storage, `study_materials/${batchId}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+
       let fileExt = file.name.split('.').pop()?.toUpperCase() || 'PDF';
       if (['PPTX'].includes(fileExt)) fileExt = 'PPTX';
       else if (['DOCX'].includes(fileExt)) fileExt = 'DOCX';
       else if (['XLS', 'XLSX', 'CSV'].includes(fileExt)) fileExt = 'Excel';
       else if (['PNG', 'JPG', 'JPEG', 'GIF'].includes(fileExt)) fileExt = 'Images';
-      
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        MockDB.addItem('studyMaterials', {
-          title: file.name,
-          description: 'Uploaded from device',
-          type: fileExt,
-          url: dataUrl, // Real base64 data URL — downloads correctly
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-          visibility: 'Students',
-          downloadAllowed: true,
-          batchId,
-          uploadDate: new Date().toISOString().split('T')[0]
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    e.target.value = ''; // reset input
+      else if (['ZIP', 'RAR'].includes(fileExt)) fileExt = 'ZIP';
+
+      setEditing({
+        ...editing,
+        title: editing?.title || file.name,
+        type: fileExt,
+        url: downloadUrl,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type
+      });
+      setUploadProgress('Upload complete!');
+      setTimeout(() => setUploadProgress(''), 2000);
+    } catch (err) {
+      console.error('File upload failed', err);
+      alert('File upload failed. Ensure Firebase Storage is properly configured.');
+      setUploadProgress('');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -893,110 +893,95 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Study Materials</h3>
         <button 
-          onClick={() => setEditing({ title: '', type: 'PDF', visibility: 'Students', downloadAllowed: true })}
+          onClick={() => setEditing({ title: '', description: '', visibility: 'Students', downloadAllowed: true })}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Add Material
+          <Plus className="w-4 h-4" /> Add Document
         </button>
-      </div>
-
-      <div className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors relative">
-        <input 
-          type="file" 
-          multiple
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          onChange={handleFileUpload}
-        />
-        <div className="flex flex-col items-center justify-center">
-          <FileText className="w-10 h-10 text-slate-400 mb-3" />
-          <p className="text-slate-600 font-medium">Drag & Drop files here, or click to <span className="text-indigo-600">Upload From Device</span></p>
-          <p className="text-slate-400 text-xs mt-2">Supports PDF, PPT, DOC, Excel, ZIP, TXT, Images. Multiple files allowed.</p>
-        </div>
       </div>
 
       {editing && (
         <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
-              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Chapter 1 Notes" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-              <textarea value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows={2} />
+              <textarea rows={2} value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Optional description"></textarea>
             </div>
+            
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type</label>
-              <select value={editing.type || 'PDF'} onChange={e => setEditing({...editing, type: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="PDF">PDF</option>
-                <option value="PPT">PPT</option>
-                <option value="PPTX">PPTX</option>
-                <option value="DOC">DOC</option>
-                <option value="DOCX">DOCX</option>
-                <option value="Excel">Excel</option>
-                <option value="ZIP">ZIP</option>
-                <option value="TXT">TXT</option>
-                <option value="Images">Images</option>
-                <option value="Other">Other uploaded files</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign to Session (Optional)</label>
-              <select value={editing.sessionId || ''} onChange={e => setEditing({...editing, sessionId: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">No Session Assigned</option>
-                {sessions.map(s => <option key={s.id} value={s.id}>{s.topic} ({s.date})</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visibility</label>
-              <select value={editing.visibility || 'Students'} onChange={e => setEditing({...editing, visibility: e.target.value as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="Students">Visible to Students</option>
-                <option value="Hidden">Hidden</option>
-              </select>
-            </div>
-            <div className="flex items-center mt-6">
-              <input type="checkbox" id="dl-allowed" checked={editing.downloadAllowed ?? true} onChange={e => setEditing({...editing, downloadAllowed: e.target.checked})} className="mr-2" />
-              <label htmlFor="dl-allowed" className="text-sm text-slate-700">Allow Download</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Document File</label>
+              <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-100 transition-colors">
+                <input 
+                  type="file" 
+                  onChange={handleFileUpload} 
+                  disabled={uploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                />
+                <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-600">
+                  {uploading ? uploadProgress : (editing.fileName ? `Selected: ${editing.fileName} (Click to replace)` : "Click or drag file to upload")}
+                </p>
+              </div>
+              {editing.url && !uploading && (
+                <p className="text-xs text-green-600 font-bold mt-2 flex items-center gap-1"><CheckSquare className="w-3 h-3"/> File successfully attached and ready to save</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Material</button>
+            <button type="submit" disabled={uploading || !editing.url} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Save Document</button>
           </div>
         </form>
       )}
 
-      <div className="divide-y divide-slate-100 bg-white rounded-xl border shadow-sm">
-        {materials.map(mat => (
-          <div key={mat.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 mt-1">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-800">{mat.title}</h4>
-                {mat.description && <p className="text-sm text-slate-600 mt-0.5">{mat.description}</p>}
-                <div className="flex items-center gap-3 mt-1.5 text-xs font-medium text-slate-500">
-                  <span className="px-2 py-0.5 bg-slate-100 rounded-md">{mat.type}</span>
-                  <span>{mat.uploadDate}</span>
-                  {mat.visibility === 'Hidden' && <span className="text-red-500 bg-red-50 px-2 py-0.5 rounded-md">Hidden</span>}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-end sm:self-center">
-              <a href={mat.url} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg">View</a>
-              <button onClick={() => setEditing(mat)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-              <button onClick={() => MockDB.deleteItem('studyMaterials', mat.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-            </div>
-          </div>
-        ))}
-        {materials.length === 0 && !editing && (
-          <div className="text-slate-500 p-12 text-center flex flex-col items-center">
-            <FileText className="w-12 h-12 text-slate-300 mb-3" />
-            <h3 className="font-bold text-slate-700">No Study Materials</h3>
-            <p className="text-sm mt-1 max-w-sm">Upload materials from your device or add external links to share with students.</p>
-          </div>
-        )}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Document Details</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">File</th>
+              <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {materials.map(mat => (
+              <tr key={mat.id} className="hover:bg-slate-50">
+                <td className="px-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">{mat.title}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-1">{mat.description}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-4">
+                  <p className="text-sm font-semibold text-slate-700">{mat.fileName || 'Legacy Link'}</p>
+                  <p className="text-xs text-slate-500">{mat.type} &bull; {mat.uploadDate}</p>
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <div className="flex justify-end items-center gap-2">
+                    <button onClick={() => setEditing(mat)} className="text-indigo-600 hover:text-indigo-800 p-2 font-semibold text-sm">Edit</button>
+                    <button onClick={() => MockDB.deleteItem('studyMaterials', mat.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {materials.length === 0 && !editing && (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                  No documents added yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
