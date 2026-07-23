@@ -15,7 +15,7 @@ export const exportBatchExcel = (batch: any, students: any[], accounts: any[]) =
     ['Total Students', students.length],
     [],
     ['Student Details'],
-    ['Name', 'Email', 'Phone', 'Enrollment Date', 'Attendance', 'Course Progress', 'Status', 'Total Fee', 'Paid Amount', 'Pending Amount']
+    ['Name', 'Email', 'Phone', 'Enrollment Date', 'Attendance', 'Status', 'Total Fee', 'Paid Amount', 'Pending Amount']
   ];
 
   students.forEach(s => {
@@ -30,8 +30,7 @@ export const exportBatchExcel = (batch: any, students: any[], accounts: any[]) =
       s.phone || 'N/A',
       s.enrollmentDate || s.joinDate || 'N/A',
       s.attendance || '0%',
-      `${s.progress || 0}%`,
-      s.status || 'Active',
+            s.status || 'Active',
       totalFee,
       paid,
       pending
@@ -45,7 +44,7 @@ export const exportBatchExcel = (batch: any, students: any[], accounts: any[]) =
 };
 
 export const exportBatchCSV = (batch: any, students: any[], accounts: any[]) => {
-  const headers = ['Name', 'Email', 'Phone', 'Enrollment Date', 'Attendance', 'Course Progress', 'Status', 'Total Fee', 'Paid Amount', 'Pending Amount'];
+  const headers = ['Name', 'Email', 'Phone', 'Enrollment Date', 'Attendance', 'Status', 'Total Fee', 'Paid Amount', 'Pending Amount'];
   
   const rows = students.map(s => {
     const account = accounts.find(a => a.studentId === s.id && a.batchId === batch.id);
@@ -101,15 +100,14 @@ export const exportBatchPDF = (batch: any, students: any[], accounts: any[]) => 
       s.name,
       s.phone || 'N/A',
       s.status || 'Active',
-      `${s.progress || 0}%`,
-      paid.toString(),
+            paid.toString(),
       pending.toString()
     ];
   });
 
   doc.autoTable({
     startY: 65,
-    head: [['Name', 'Phone', 'Status', 'Progress', 'Paid', 'Pending']],
+    head: [['Name', 'Phone', 'Status', 'Paid', 'Pending']],
     body: tableData,
     theme: 'grid',
     headStyles: { fillColor: [79, 70, 229] } // Indigo-600

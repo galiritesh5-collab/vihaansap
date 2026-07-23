@@ -126,7 +126,7 @@ export default function Dashboard() {
                         {batch.status}
                       </span>
                       <h4 className="font-bold text-slate-800 text-lg mt-2 leading-tight">{batch.course}</h4>
-                      <p className="text-sm text-slate-500 mt-1">Batch: {batch.name} â€¢ Mentor: {batch.mentor}</p>
+                      <p className="text-sm text-slate-500 mt-1">Batch: {batch.name} &bull; Mentor: {batch.mentor}</p>
                     </div>
                     <Link to="/student/courses" className="inline-block w-full sm:w-auto bg-[#1763B6] hover:bg-[#145096] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors mt-2 text-center">
                       Go to Workspace
@@ -157,7 +157,7 @@ export default function Dashboard() {
                     <div>
                       <h4 className="font-bold text-slate-800">{cls.topic}</h4>
                       <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        <span className="font-medium text-slate-700">{cls.date}</span> at <span className="font-medium text-slate-700">{cls.time}</span> â€¢ {batch?.course}
+                        <span className="font-medium text-slate-700">{cls.date}</span> at <span className="font-medium text-slate-700">{cls.time}</span> &bull; {batch?.course}
                       </p>
                     </div>
                   </div>
@@ -243,7 +243,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-slate-800 text-sm line-clamp-1">{rec.topic}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{batch?.course} â€¢ {rec.date}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{batch?.course} &bull; {rec.date}</p>
                   </div>
                 </a>
               )}) : (

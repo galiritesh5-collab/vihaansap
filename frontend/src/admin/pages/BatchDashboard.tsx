@@ -419,18 +419,12 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
     const allSessions = db.batchSessions?.filter((ss: any) => ss.batchId === batchId) || [];
     const total = syllabus.length || 1;
     const completedCount = [...allSessions.filter((ss: any) => ss.id !== s.id), { ...payload }].filter((ss: any) => ss.status === 'Completed').length;
-    const progress = Math.round((completedCount / total) * 100);
-    const enrolledStudentIds = batch?.studentIds || [];
-    enrolledStudentIds.forEach((sid: string) => {
-      MockDB.updateItem('students', sid, { progress });
-    });
 
     setEditingIdx(null);
   };
 
   const totalSessions = syllabus.length;
   const completedSessions = mergedSessions.filter(s => s.status === 'Completed').length;
-  const progressPct = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -443,15 +437,6 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
             </p>
           )}
         </div>
-        {/* Progress */}
-        {totalSessions > 0 && (
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-            </div>
-            <span className="text-sm font-black text-slate-700">{progressPct}%</span>
-          </div>
-        )}
       </div>
 
       {syllabus.length === 0 && (
@@ -747,41 +732,99 @@ function OverviewTab({ batchId }: { batchId: string }) {
 }
 
 
-function FeedbackTab({ batchId }: { batchId: string }) {
+function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
   const db = useDB();
+  const batch = db.batches?.find(b => b.id === batchId);
   
-  const handleRequestFeedback = () => {
+  // Reviews for this batch
+  const batchReviews = (db.reviews || []).filter((r: any) => r.batchId === batchId);
+  
+  const handleSendReviewRequest = () => {
     MockDB.addItem('notifications', {
-      title: "Feedback Requested",
-      message: "Please submit your feedback for this batch. Your review is valuable to us.",
+      title: "Course Feedback Requested",
+      message: "Your batch has requested course feedback. Please share your rating and review.",
       date: new Date().toISOString().split('T')[0],
       type: 'info',
       target: 'Batch',
       targetId: batchId,
       isFeedbackRequest: true
     });
-    alert("Feedback request sent to all batch students.");
+    alert("Review request sent to all students in this batch.");
+  };
+
+  const handleApprove = (reviewId: string) => {
+    MockDB.updateItem('reviews', reviewId, { status: 'Approved' });
+  };
+
+  const handleReject = (reviewId: string) => {
+    MockDB.updateItem('reviews', reviewId, { status: 'Rejected' });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-bold text-slate-800">Batch Feedback & Reviews</h3>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div>
+          <h3 className="text-lg font-bold text-slate-800">Reviews & Feedback</h3>
+          <p className="text-sm text-slate-500 mt-1">Manage student feedback and reviews for this batch.</p>
+        </div>
         <button 
-          onClick={handleRequestFeedback}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+          onClick={handleSendReviewRequest}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 shrink-0"
         >
-          <Plus className="w-4 h-4" /> Request Feedback
+          <MessageSquare className="w-4 h-4" /> Send Review Request
         </button>
       </div>
-      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500">
-        <Star className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <h4 className="text-lg font-bold text-slate-700">Review Queue</h4>
-        <p className="mt-2 mb-4 text-sm max-w-sm mx-auto">Manage student reviews for this batch from the global Reviews Queue.</p>
-        <a href="/admin/reviews" className="text-indigo-600 hover:text-indigo-700 font-semibold text-sm inline-flex items-center gap-1">
-          Go to Reviews Queue &rarr;
-        </a>
-      </div>
+
+      {batchReviews.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-500">
+          <Star className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <h4 className="text-lg font-bold text-slate-700">No Reviews Yet</h4>
+          <p className="mt-2 text-sm max-w-sm mx-auto">Send a review request to enrolled students. Their submissions will appear here for your approval.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100 bg-white rounded-xl border border-slate-200 shadow-sm">
+          {batchReviews.map((review: any) => (
+            <div key={review.id} className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold shrink-0">
+                    {(review.name || review.studentName || 'S').charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{review.name || review.studentName || 'Student'}</p>
+                    <p className="text-xs text-slate-400">{review.date} • {review.course}</p>
+                  </div>
+                  <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+                    review.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                    review.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {review.status || 'Pending'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 mb-1">
+                  {[1,2,3,4,5].map(star => (
+                    <Star key={star} className={`w-3.5 h-3.5 ${star <= (review.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200'}`} />
+                  ))}
+                </div>
+                <p className="text-sm text-slate-600">{review.content || review.text}</p>
+              </div>
+              <div className="flex sm:flex-col gap-2 shrink-0">
+                {review.status !== 'Approved' && (
+                  <button onClick={() => handleApprove(review.id)} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-colors">
+                    Approve
+                  </button>
+                )}
+                {review.status !== 'Rejected' && (
+                  <button onClick={() => handleReject(review.id)} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-colors">
+                    Reject
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -814,7 +857,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    // Process each file (mocking actual upload)
+    // Process each file using FileReader to create a real downloadable data URL
     Array.from(files as FileList).forEach((file: File) => {
       let fileExt = file.name.split('.').pop()?.toUpperCase() || 'PDF';
       if (['PPTX'].includes(fileExt)) fileExt = 'PPTX';
@@ -822,20 +865,24 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       else if (['XLS', 'XLSX', 'CSV'].includes(fileExt)) fileExt = 'Excel';
       else if (['PNG', 'JPG', 'JPEG', 'GIF'].includes(fileExt)) fileExt = 'Images';
       
-      const newMaterial = {
-        title: file.name,
-        description: 'Uploaded from device',
-        type: fileExt,
-        url: '#', // mock URL
-        visibility: 'Students',
-        downloadAllowed: true
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        MockDB.addItem('studyMaterials', {
+          title: file.name,
+          description: 'Uploaded from device',
+          type: fileExt,
+          url: dataUrl, // Real base64 data URL — downloads correctly
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          visibility: 'Students',
+          downloadAllowed: true,
+          batchId,
+          uploadDate: new Date().toISOString().split('T')[0]
+        });
       };
-      
-      MockDB.addItem('studyMaterials', {
-        ...newMaterial,
-        batchId,
-        uploadDate: new Date().toISOString().split('T')[0]
-      });
+      reader.readAsDataURL(file);
     });
     
     e.target.value = ''; // reset input
@@ -1455,12 +1502,10 @@ export default function BatchDashboard() {
     { name: 'Weekly Planner', icon: Calendar },
     { name: "Today's Session", icon: Video },
     { name: 'Study Materials', icon: FileText },
-    { name: 'Assignments', icon: FileText },
     { name: 'Recordings', icon: PlayCircle },
     { name: 'Notifications', icon: MessageSquare },
     { name: 'Doubt Support', icon: MessageSquare },
-    { name: 'Feedback', icon: MessageSquare },
-    { name: 'Ratings', icon: Star },
+    { name: 'Reviews & Feedback', icon: Star },
     { name: 'Settings', icon: Settings },
   ];
 
@@ -1472,7 +1517,7 @@ export default function BatchDashboard() {
         </Link>
         <div>
           <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">{batch.name}</h2>
-          <p className="text-slate-500 text-sm mt-1">{batch.course} â€¢ Mentor: {batch.mentor}</p>
+          <p className="text-slate-500 text-sm mt-1">{batch.course} • Mentor: {batch.mentor}</p>
         </div>
       </div>
 
@@ -1497,13 +1542,11 @@ export default function BatchDashboard() {
         {activeTab === 'Course Calendar' && <CourseCalendarTab batchId={batchId as string} />}
         {activeTab === 'Weekly Planner' && <WeeklyPlannerTab batchId={batchId as string} />}
         {activeTab === 'Study Materials' && <StudyMaterialsTab batchId={batchId as string} />}
-        {activeTab === 'Assignments' && <AssignmentsTab batchId={batchId as string} />}
         {activeTab === 'Students' && <StudentsTab batchId={batchId as string} />}
         {activeTab === 'Recordings' && <RecordingsTab batchId={batchId as string} />}
         {activeTab === 'Notifications' && <NotificationsTab batchId={batchId as string} />}
         {activeTab === 'Doubt Support' && <DoubtSupportTab batchId={batchId as string} />}
-        {activeTab === 'Feedback' && <FeedbackTab batchId={batchId as string} />}
-        {activeTab === 'Ratings' && <div className="text-slate-500 py-8 text-center">View final course ratings.</div>}
+        {activeTab === 'Reviews & Feedback' && <ReviewsFeedbackTab batchId={batchId as string} />}
         {activeTab === 'Settings' && <div className="text-slate-500 py-8 text-center">Batch settings and configuration.</div>}
       </div>
     </div>

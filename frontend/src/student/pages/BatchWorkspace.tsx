@@ -20,7 +20,7 @@ export default function BatchWorkspace() {
 
   if (!batch || !course) return <div className="p-8">Batch not found</div>;
 
-  const tabs = ['Overview', 'Weekly Planner', "Today's Session", 'Study Materials', 'Recorded Classes', 'Notifications', 'Doubts', 'Progress'];
+  const tabs = ['Overview', 'Weekly Planner', "Today's Session", 'Study Materials', 'Recorded Classes', 'Notifications', 'Doubts'];
 
   // Data
   const materials = db.studyMaterials?.filter(m => m.batchId === batchId && m.visibility !== 'Hidden' && (!m.visibilitySettings || m.visibilitySettings.mode === 'All' || m.visibilitySettings.studentIds?.includes(studentProfile?.id))) || [];
@@ -257,7 +257,7 @@ export default function BatchWorkspace() {
                    <div className="flex items-center gap-2">
                      <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
                      {m.downloadAllowed !== false && (
-                       <button onClick={() => downloadFile(m.url, m.title)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
+                       <button onClick={() => downloadFile(m.url, m.fileName || m.title)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
                          <Download className="w-4 h-4" /> Download
                        </button>
                      )}

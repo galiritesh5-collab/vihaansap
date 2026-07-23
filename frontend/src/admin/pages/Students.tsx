@@ -54,16 +54,14 @@ export default function Students() {
   // Edit states
   const [editCourse, setEditCourse] = useState('');
   const [editBatch, setEditBatch] = useState('');
-  const [editProgress, setEditProgress] = useState(0);
-  const [editCompletedModules, setEditCompletedModules] = useState('');
+    const [editCompletedModules, setEditCompletedModules] = useState('');
   const [editCourseStatus, setEditCourseStatus] = useState('In Progress');
 
   const handleSelectStudent = (student: any) => {
     setSelectedStudent(student);
     setEditCourse(student.course || '');
     setEditBatch(student.batch || '');
-    setEditProgress(student.progress || 0);
-    setEditCompletedModules((student.completedModules || []).join(', '));
+        setEditCompletedModules((student.completedModules || []).join(', '));
     setEditCourseStatus(student.courseStatus || 'In Progress');
   };
 
@@ -85,8 +83,7 @@ export default function Students() {
     const updatePayload = {
       course: editCourse,
       batch: editBatch,
-      progress: editProgress,
-      completedModules: modulesArray,
+            completedModules: modulesArray,
       courseStatus: editCourseStatus,
     };
 
@@ -287,7 +284,7 @@ export default function Students() {
               </div>
 
               <div className="space-y-4">
-                <h5 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">Assignments & Progress</h5>
+                <h5 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">Enrollment Details</h5>
                 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Assign Course</label>
