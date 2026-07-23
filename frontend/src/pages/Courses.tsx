@@ -371,11 +371,11 @@ export default function Courses({ onInquireCourse, inquiryCourseName, onClearInq
             )}
 
             {/* Reviews Section */}
-            {course.showReviews !== false && db.reviews && db.reviews.filter(r => r.module === course.name).length > 0 && (
+            {course.showReviews !== false && db.reviews && db.reviews.filter(r => r.module === course.name && r.status === 'Approved').length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-200">
                 <h4 className="font-bold text-slate-800 text-sm">Student Reviews</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {db.reviews.filter(r => r.module === course.name).map((review) => (
+                  {db.reviews.filter(r => r.module === course.name && r.status === 'Approved').map((review) => (
                     <div key={review.id} className="bg-white p-3 rounded-lg border border-slate-100 text-xs flex gap-3">
                       <img src={review.avatar} alt={review.name} className="w-8 h-8 rounded-full bg-slate-100" />
                       <div>

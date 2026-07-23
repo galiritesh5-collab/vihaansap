@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useDB } from '../hooks/useDB';
@@ -32,8 +32,8 @@ export default function Blogs() {
             >
               <div className="relative w-full md:w-[35%] h-56 md:h-auto md:min-h-[240px] overflow-hidden shrink-0 bg-slate-100">
                 <img 
-                  src={blog.coverImage || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800'}
-                  onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800'; }}
+                  src={blog.coverImage || '/assets/course-default.png'}
+                  onError={(e) => { e.currentTarget.src = '/assets/course-default.png'; }}
                   alt={blog.title}
                   className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
                     blog.imagePosition === 'Top' ? 'object-top' :
@@ -67,3 +67,4 @@ export default function Blogs() {
     </div>
   );
 }
+

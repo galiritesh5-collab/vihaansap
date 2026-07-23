@@ -6,6 +6,10 @@ import { Plus, Edit2, Trash2, X, CheckCircle, XCircle } from 'lucide-react';
 export default function Reviews() {
   const db = useDB();
   const [editingReview, setEditingReview] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('Pending');
+
+  const pendingCount = db.reviews?.filter((r: any) => !r.status || r.status === 'Pending').length || 0;
+  const filteredReviews = statusFilter === 'All' ? db.reviews : db.reviews?.filter((r: any) => r.status === statusFilter) || [];
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +40,7 @@ export default function Reviews() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">Reviews CMS</h2>
-          <p className="text-slate-500 text-sm mt-1">Manage public student testimonials.</p>
+          <p className="text-slate-500 text-sm mt-1">Manage public student testimonials. {pendingCount > 0 && <span className="ml-2 bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">{pendingCount} Pending</span>}</p>
         </div>
         <button 
           onClick={() => setEditingReview({ name: '', role: '', company: '', text: '', rating: 5, status: 'Pending', avatar: '', course: '' })}
@@ -44,6 +48,15 @@ export default function Reviews() {
         >
           <Plus className="w-4 h-4" /> Add Review
         </button>
+      </div>
+
+      {/* Status Filter Bar */}
+      <div className="flex gap-2">
+        {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)} className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${ statusFilter === s ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' }`}>
+            {s} {s === 'Pending' && pendingCount > 0 ? `(${pendingCount})` : ''}
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -59,7 +72,7 @@ export default function Reviews() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {db.reviews.map(review => (
+            {filteredReviews?.map(review => (
               <tr key={review.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4">
                   <p className="text-sm font-bold text-slate-800">{review.name}</p>

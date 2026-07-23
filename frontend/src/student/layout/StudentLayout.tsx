@@ -68,7 +68,6 @@ export default function StudentLayout() {
     { name: 'Dashboard',        path: '/student/dashboard',     icon: LayoutDashboard },
     { name: 'My Courses',       path: '/student/courses',        icon: BookOpen },
     { name: 'Weekly Planner',   path: '/student/weekly-planner', icon: Calendar },
-    { name: 'Live Classes',     path: '/student/live-classes',   icon: MonitorPlay },
     { name: 'Recorded Classes', path: '/student/recordings',     icon: Video },
     { name: 'Study Materials',  path: '/student/materials',      icon: FileText },
     { name: 'Calendar',         path: '/student/calendar',       icon: Calendar },

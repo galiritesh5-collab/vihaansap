@@ -57,12 +57,21 @@ export interface ClassSchedule {
   recordingUrl?: string;
 }
 
+export interface PlannerTopicItem {
+  id: string;
+  title: string;
+  status: 'Upcoming' | 'In Progress' | 'Completed';
+  subTopics?: { id: string; title: string; status: 'Upcoming' | 'Completed' }[];
+}
+
 export interface BatchPlannerWeek {
   id: string;
   batchId: string;
   weekNumber: number;
   title: string;
   topics: string[];
+  topicItems?: PlannerTopicItem[];
+  status?: 'Upcoming' | 'In Progress' | 'Completed';
 }
 
 export interface SubTopic {
@@ -84,6 +93,8 @@ export interface BatchSession {
   recordingUrl?: string;
   subTopics?: SubTopic[];
   syllabusIndex?: number;
+  visibleFrom?: string;
+  visibleUntil?: string;
 }
 
 export interface StudyMaterial {
@@ -97,6 +108,7 @@ export interface StudyMaterial {
   visibility?: 'Students' | 'Hidden';
   downloadAllowed?: boolean;
   sessionId?: string;
+  visibilitySettings?: { mode: 'All' | 'Selected'; studentIds?: string[] };
 }
 
 export interface Recording {
@@ -115,4 +127,5 @@ export interface Recording {
   visibility?: 'Students' | 'Hidden';
   topic?: string;
   uploadDate?: string;
+  visibilitySettings?: { mode: 'All' | 'Selected'; studentIds?: string[] };
 }

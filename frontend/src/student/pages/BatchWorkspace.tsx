@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockDB } from '../../services/MockDB';
-import { BookOpen, Calendar, Video, FileText, PlayCircle, MessageSquare, HelpCircle, ArrowLeft, CheckCircle, Send, Paperclip } from 'lucide-react';
+import { BookOpen, Calendar, Video, FileText, PlayCircle, MessageSquare, HelpCircle, ArrowLeft, CheckCircle, Send, Paperclip, Star, X, Download } from 'lucide-react';
 
 export default function BatchWorkspace() {
   const { batchId } = useParams();
@@ -12,14 +12,18 @@ export default function BatchWorkspace() {
   const batch = db.batches.find(b => b.id === batchId);
   const course = db.courses.find(c => c.name === batch?.course);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   if (!batch || !course) return <div className="p-8">Batch not found</div>;
 
   const tabs = ['Overview', 'Weekly Planner', "Today's Session", 'Study Materials', 'Recorded Classes', 'Notifications', 'Doubts', 'Progress'];
 
   // Data
-  const materials = db.studyMaterials?.filter(m => m.batchId === batchId && m.visibility !== 'Hidden') || [];
-  const recordings = db.recordings?.filter(r => r.batchId === batchId && r.visibility !== 'Hidden') || [];
+  const materials = db.studyMaterials?.filter(m => m.batchId === batchId && m.visibility !== 'Hidden' && (!m.visibilitySettings || m.visibilitySettings.mode === 'All' || m.visibilitySettings.studentIds?.includes(studentProfile?.id))) || [];
+  const recordings = db.recordings?.filter(r => r.batchId === batchId && r.visibility !== 'Hidden' && (!r.visibilitySettings || r.visibilitySettings.mode === 'All' || r.visibilitySettings.studentIds?.includes(studentProfile?.id))) || [];
   const notifications = db.notifications?.filter(n => 
     n.target === 'Entire Platform' || 
     (n.target === 'Course' && n.targetId === course.name) || 
@@ -28,13 +32,96 @@ export default function BatchWorkspace() {
   ) || [];
   const doubts = db.doubts?.filter(d => d.batchId === batchId && d.studentId === studentProfile.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
-  const todaySession = sessions.find(s => s.status === 'Live') || sessions.find(s => s.status === 'Upcoming');
+
+  // Detect feedback request notification
+  const feedbackRequested = db.notifications?.some(n => n.targetId === batchId && n.isFeedbackRequest) || false;
+  const hasSubmittedReview = db.reviews?.some((r: any) => r.batchId === batchId && r.studentId === studentProfile?.id) || false;
+
+    
+    // Filter session based on visibleFrom / visibleUntil if they exist
+    const now = new Date();
+    const activeSessions = sessions.filter(s => {
+      if (s.visibleFrom && new Date(s.visibleFrom) > now) return false;
+      if (s.visibleUntil && new Date(s.visibleUntil) < now) return false;
+      return true;
+    });
+
+    const todaySession = activeSessions.find(s => s.status === 'Live') || activeSessions.find(s => s.status === 'Upcoming');
   
   // Planners
   const planners = db.batchPlanner?.filter(p => p.batchId === batchId).sort((a, b) => a.weekNumber - b.weekNumber) || [];
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
+
+      {/* Review Submission Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-800">Submit Your Review</h3>
+              <button onClick={() => setShowFeedbackModal(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg"><X className="w-5 h-5" /></button>
+            </div>
+            {reviewSubmitted ? (
+              <div className="text-center py-6">
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <h4 className="text-lg font-bold text-slate-700">Thank you for your review!</h4>
+                <p className="text-slate-500 text-sm mt-1">Your feedback has been submitted for approval.</p>
+                <button onClick={() => setShowFeedbackModal(false)} className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-sm">Close</button>
+              </div>
+            ) : (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                MockDB.addItem('reviews', {
+                  name: studentProfile?.name || 'Student',
+                  role: 'Student',
+                  course: course.name,
+                  batchId,
+                  studentId: studentProfile?.id,
+                  content: reviewText,
+                  rating: reviewRating,
+                  status: 'Pending',
+                  date: new Date().toISOString()
+                });
+                setReviewSubmitted(true);
+              }} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Rating</label>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(s => (
+                      <button key={s} type="button" onClick={() => setReviewRating(s)}>
+                        <Star className={`w-8 h-8 transition-colors ${s <= reviewRating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Feedback</label>
+                  <textarea required value={reviewText} onChange={e => setReviewText(e.target.value)} placeholder="Share your experience with this course..." rows={4} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                </div>
+                <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors">Submit Review</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Request Banner */}
+      {feedbackRequested && !hasSubmittedReview && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Star className="w-5 h-5 text-indigo-500 shrink-0" />
+            <div>
+              <p className="font-bold text-indigo-800 text-sm">Your feedback has been requested!</p>
+              <p className="text-indigo-600 text-xs mt-0.5">Help us improve by sharing your experience.</p>
+            </div>
+          </div>
+          <button onClick={() => setShowFeedbackModal(true)} className="shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-lg transition-colors">
+            Submit Review
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-4 mb-4">
         <Link to="/student/courses" className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -166,7 +253,14 @@ export default function BatchWorkspace() {
                         <p className="text-xs text-slate-500 mt-1">{m.type} • Uploaded: {m.uploadDate}</p>
                       </div>
                    </div>
-                   <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
+                   <div className="flex items-center gap-2">
+                     <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
+                     {m.downloadAllowed !== false && (
+                       <a href={m.url} download target="_blank" rel="noreferrer" className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
+                         <Download className="w-4 h-4" /> Download
+                       </a>
+                     )}
+                   </div>
                 </div>
               )) : (
                 <div className="p-12 text-center text-slate-500 flex flex-col items-center">

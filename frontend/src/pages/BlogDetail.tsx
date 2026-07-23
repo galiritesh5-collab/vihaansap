@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { useDB } from '../hooks/useDB';
@@ -69,8 +69,8 @@ export default function BlogDetail() {
           {/* Hero Image */}
           <div className="w-full h-64 md:h-[400px] relative">
             <img 
-              src={blog.coverImage || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800'}
-               onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800'; }} 
+              src={blog.coverImage || '/assets/course-default.png'}
+               onError={(e) => { e.currentTarget.src = '/assets/course-default.png'; }} 
               alt={blog.title} 
               className={`w-full h-full object-cover ${
                 blog.imagePosition === 'Top' ? 'object-top' :
@@ -114,3 +114,4 @@ export default function BlogDetail() {
     </div>
   );
 }
+

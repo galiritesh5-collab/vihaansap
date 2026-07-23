@@ -24,6 +24,8 @@ export interface Notification {
   type: 'info' | 'alert' | 'success';
   target: 'Everyone' | 'Students' | 'Mentors' | 'Batch' | 'Course' | 'Specific Student';
   targetId?: string;
+  visibilitySettings?: { mode: 'All' | 'Selected'; studentIds?: string[] };
+  isFeedbackRequest?: boolean;
 }
 
 export interface DoubtTicket {

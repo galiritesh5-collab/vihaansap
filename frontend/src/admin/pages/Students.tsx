@@ -4,6 +4,33 @@ import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
 import { FirestoreStudentService } from '../../services/FirestoreStudentService';
 
+function whatsAppLink(phone: string, message: string): string {
+  const cleaned = phone.replace(/\D/g, '');
+  const number = cleaned.startsWith('91') ? cleaned : `91${cleaned}`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
+
+function buildWelcomeMessage(studentName: string, batchName: string, courseName: string): string {
+  return `Dear ${studentName}
+
+Welcome to Sri Vihaan SAP Consulting!
+
+We are thrilled to have you join our
+${courseName}
+program.
+
+You have been successfully enrolled in:
+Batch: ${batchName}
+
+Your journey to mastering SAP begins now.
+
+Please log in to your student portal to access your study materials and live class schedule.
+
+For any assistance during your course, please contact us.
+
+Happy Learning!`;
+}
+
 export default function Students() {
     const db = useDB();
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,6 +124,16 @@ export default function Students() {
       ...updatePayload,
     });
     alert('Student profile updated successfully!');
+
+    if (selectedStudent.batch !== editBatch && editBatch) {
+      if (window.confirm("Student enrolled in new batch. Send welcome WhatsApp?")) {
+        if (selectedStudent.phone) {
+          window.open(whatsAppLink(selectedStudent.phone, buildWelcomeMessage(selectedStudent.name, editBatch, editCourse)), "_blank");
+        } else {
+          alert("Student does not have a phone number recorded.");
+        }
+      }
+    }
   };
 
   return (

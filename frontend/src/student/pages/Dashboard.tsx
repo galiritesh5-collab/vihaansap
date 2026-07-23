@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -19,7 +19,11 @@ export default function Dashboard() {
   const pastSessions = mySessions.filter(s => s.status === 'Completed');
 
   // Filter student notifications
-  const studentNotifs = db.notifications?.filter(n => n.target === 'Everyone' || n.target === 'Students') || [];
+  const studentNotifs = db.notifications?.filter(n => {
+    const targetMatch = n.target === 'Everyone' || n.target === 'Students';
+    const visibilityMatch = !n.visibilitySettings || n.visibilitySettings.mode === 'All' || n.visibilitySettings.studentIds?.includes(studentProfile?.id);
+    return targetMatch && visibilityMatch;
+  }) || [];
   const myDoubts = db.doubts?.filter(d => d.studentId === studentProfile?.id) || [];
   
   // Find past sessions missing feedback
@@ -73,7 +77,7 @@ export default function Dashboard() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-50 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
         <div className="relative z-10">
           <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-800 tracking-tight">
-            Welcome back, {currentUser?.displayName || currentUser?.email}! 👋
+            Welcome back, {currentUser?.displayName || currentUser?.email}! ðŸ‘‹
           </h2>
           <p className="text-slate-500 mt-2 max-w-2xl text-sm sm:text-base">
             You have {upcomingSessions.length} upcoming classes today. Resume your recent courses to keep up your learning streak.
@@ -114,7 +118,7 @@ export default function Dashboard() {
                 return (
                 <div key={batch.id} className="flex flex-col sm:flex-row gap-6 items-center sm:items-start mb-6 last:mb-0">
                   <div className="w-full sm:w-48 h-32 rounded-xl overflow-hidden shrink-0 shadow-sm bg-slate-100">
-                    <img src={course?.thumbnail || "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800"} alt={course?.name} className="w-full h-full object-cover" />
+                    <img src={course?.thumbnail || "/assets/course-default.png"} alt={course?.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 space-y-3 w-full">
                     <div>
@@ -122,7 +126,7 @@ export default function Dashboard() {
                         {batch.status}
                       </span>
                       <h4 className="font-bold text-slate-800 text-lg mt-2 leading-tight">{batch.course}</h4>
-                      <p className="text-sm text-slate-500 mt-1">Batch: {batch.name} • Mentor: {batch.mentor}</p>
+                      <p className="text-sm text-slate-500 mt-1">Batch: {batch.name} â€¢ Mentor: {batch.mentor}</p>
                     </div>
                     <Link to="/student/courses" className="inline-block w-full sm:w-auto bg-[#1763B6] hover:bg-[#145096] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors mt-2 text-center">
                       Go to Workspace
@@ -153,7 +157,7 @@ export default function Dashboard() {
                     <div>
                       <h4 className="font-bold text-slate-800">{cls.topic}</h4>
                       <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        <span className="font-medium text-slate-700">{cls.date}</span> at <span className="font-medium text-slate-700">{cls.time}</span> • {batch?.course}
+                        <span className="font-medium text-slate-700">{cls.date}</span> at <span className="font-medium text-slate-700">{cls.time}</span> â€¢ {batch?.course}
                       </p>
                     </div>
                   </div>
@@ -239,7 +243,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <h4 className="font-semibold text-slate-800 text-sm line-clamp-1">{rec.topic}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{batch?.course} • {rec.date}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{batch?.course} â€¢ {rec.date}</p>
                   </div>
                 </a>
               )}) : (
@@ -264,3 +268,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

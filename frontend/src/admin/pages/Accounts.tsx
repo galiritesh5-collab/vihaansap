@@ -3,8 +3,10 @@ import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
 import {
   IndianRupee, TrendingUp, Clock, AlertCircle, Plus, Edit2, Trash2,
-  CheckCircle, MessageCircle, ChevronDown, ChevronUp, Search, Filter, X
+  CheckCircle, MessageCircle, ChevronDown, ChevronUp, Search, Filter, X,
+  Download, FileSpreadsheet, FileText, FileJson
 } from 'lucide-react';
+import { exportPaymentsExcel, exportPaymentsCSV, exportPaymentsPDF } from '../utils/exportPayments';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,11 +50,44 @@ function whatsAppLink(phone: string, message: string): string {
 }
 
 function buildPaymentReminder(record: AccountRecord, inst: Installment): string {
-  const pending = record.installments
-    .filter(i => i.status !== 'Paid')
-    .reduce((sum, i) => sum + i.amount, 0);
-  return `Hello ${record.studentName},\n\nThis is a reminder from Sri Vihaan SAP Consulting.\n\nCourse: ${record.courseName}\nBatch: ${record.batchName}\n\nPending Amount: ₹${inst.amount.toLocaleString('en-IN')}\nDue Date: ${inst.dueDate}\n\nTotal Outstanding: ₹${pending.toLocaleString('en-IN')}\n\nKindly arrange the payment at the earliest.\n\nThank you,\nSri Vihaan Team`;
+  return `Dear ${record.studentName}
+
+This is a friendly reminder from
+Sri Vihaan SAP Consulting.
+
+Your installment for
+${record.courseName}
+is pending.
+
+Amount:
+₹${inst.amount.toLocaleString('en-IN')}
+
+Due Date:
+${inst.dueDate}
+
+Please complete the payment at your earliest convenience.
+
+For any assistance please contact us.
+
+Thank you.`;
 }
+
+function buildPaymentConfirmation(record: AccountRecord, inst: Installment): string {
+  return `Dear ${record.studentName}
+
+Thank you.
+
+We have successfully received your payment of
+₹${inst.amount.toLocaleString('en-IN')}
+for
+${record.courseName}
+
+Your payment has been recorded successfully.
+
+Thank you for choosing
+Sri Vihaan SAP Consulting.`;
+}
+
 
 // ─── Installment Badge ────────────────────────────────────────────────────────
 
@@ -122,6 +157,13 @@ function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit
       ),
     };
     MockDB.updateItem('accounts', record.id, updated);
+    
+    if (window.confirm("Payment marked as Paid. Send WhatsApp confirmation?")) {
+      const inst = record.installments.find(i => i.id === instId);
+      if (inst && record.studentPhone) {
+        window.open(whatsAppLink(record.studentPhone, buildPaymentConfirmation(record, inst)), "_blank");
+      }
+    }
   };
 
   return (
@@ -478,6 +520,7 @@ function AccountModal({
 export default function Accounts() {
   const db = useDB();
   const [modal, setModal] = useState<Partial<AccountRecord> | null | 'new'>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterBatch, setFilterBatch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -508,12 +551,35 @@ export default function Accounts() {
           <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">Accounts & Payments</h2>
           <p className="text-slate-500 text-sm mt-1">Track student fee records, installments and collections.</p>
         </div>
-        <button
-          onClick={() => setModal('new')}
-          className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Add Fee Record
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4" /> Export Payments
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 shadow-xl rounded-xl overflow-hidden z-20 py-2">
+                <button onClick={() => { exportPaymentsExcel(filtered); setExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-semibold text-slate-700 flex items-center gap-3">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel (.xlsx)
+                </button>
+                <button onClick={() => { exportPaymentsPDF(filtered); setExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-semibold text-slate-700 flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-red-600" /> PDF Report
+                </button>
+                <button onClick={() => { exportPaymentsCSV(filtered); setExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-semibold text-slate-700 flex items-center gap-3">
+                  <FileJson className="w-4 h-4 text-blue-600" /> CSV Export
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setModal('new')}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Add Fee Record
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

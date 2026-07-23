@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { BookOpen, Star, Clock } from 'lucide-react';
@@ -32,7 +32,7 @@ export default function MyCourses() {
             return (
             <div key={batch.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
               <div className="h-40 bg-slate-100 relative overflow-hidden">
-                <img src={course?.thumbnail || "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=800"} alt={course?.name} className="w-full h-full object-cover" />
+                <img src={course?.thumbnail || "/assets/course-default.png"} alt={course?.name} className="w-full h-full object-cover" />
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-[#1763B6]">
                   {batch.status}
                 </div>
@@ -40,7 +40,7 @@ export default function MyCourses() {
               
               <div className="p-6 flex-1 flex flex-col">
                 <h3 className="text-lg font-bold text-slate-800 leading-tight mb-2">{course?.name}</h3>
-                <p className="text-sm text-slate-500 mb-4 line-clamp-2">{batch.name} • Mentor: {batch.mentor}</p>
+                <p className="text-sm text-slate-500 mb-4 line-clamp-2">{batch.name} â€¢ Mentor: {batch.mentor}</p>
                 
                 <div className="mt-auto space-y-4">
                   <div className="flex items-center justify-between text-xs text-slate-500">
@@ -76,3 +76,4 @@ export default function MyCourses() {
     </div>
   );
 }
+

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
-import { Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Download, FileSpreadsheet, FileText, FileJson } from 'lucide-react';
+import { exportBatchExcel, exportBatchCSV, exportBatchPDF } from '../utils/exportBatch';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -9,6 +10,7 @@ export default function Batches() {
   const db = useDB();
   const { userRole, currentUser } = useAuth();
   const [editingBatch, setEditingBatch] = useState<any>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState<string | null>(null);
 
   const isMentor = userRole === 'mentor';
   const currentMentor = isMentor ? db.mentors?.find(m => m.email === currentUser?.email) : null;
@@ -26,6 +28,18 @@ export default function Batches() {
       MockDB.addItem('batches', editingBatch);
     }
     setEditingBatch(null);
+  };
+
+
+  const handleExport = (batch: any, type: 'excel' | 'pdf' | 'csv') => {
+    const batchStudents = db.students.filter(s => batch.studentIds?.includes(s.id));
+    const allAccounts = (db as any).accounts || [];
+    
+    if (type === 'excel') exportBatchExcel(batch, batchStudents, allAccounts);
+    if (type === 'csv') exportBatchCSV(batch, batchStudents, allAccounts);
+    if (type === 'pdf') exportBatchPDF(batch, batchStudents, allAccounts);
+    
+    setExportMenuOpen(null);
   };
 
   const handleDelete = (id: string) => {
@@ -79,6 +93,27 @@ export default function Batches() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
+                  <div className="relative inline-block mr-2">
+                    <button 
+                      onClick={() => setExportMenuOpen(exportMenuOpen === batch.id ? null : batch.id)}
+                      className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" /> Export
+                    </button>
+                    {exportMenuOpen === batch.id && (
+                      <div className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 shadow-lg rounded-lg overflow-hidden z-10 py-1">
+                        <button onClick={() => handleExport(batch, 'excel')} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-xs flex items-center gap-2">
+                          <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Excel
+                        </button>
+                        <button onClick={() => handleExport(batch, 'pdf')} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-xs flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-red-600" /> PDF
+                        </button>
+                        <button onClick={() => handleExport(batch, 'csv')} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-xs flex items-center gap-2">
+                          <FileJson className="w-4 h-4 text-blue-600" /> CSV
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <Link to={`/admin/batches/${batch.id}`} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-semibold mr-2">
                     Manage Workspace
                   </Link>
