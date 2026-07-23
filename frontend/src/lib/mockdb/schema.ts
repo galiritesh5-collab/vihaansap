@@ -17,6 +17,7 @@ export interface DatabaseSchema {
   batches: any[];
   batchPlanner: any[];
   batchSessions: any[];
+  liveClasses: any[];
   studyMaterials: any[];
   sessionFeedback: any[];
   courseRatings: any[];

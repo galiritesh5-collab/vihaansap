@@ -825,23 +825,175 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
   );
 }
 
+function LiveClassesTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const batch = db.batches?.find(b => b.id === batchId);
+  const enrolledStudents = db.students?.filter(s => batch?.studentIds?.includes(s.id)) || [];
+  const allLiveClasses = (db.liveClasses || [])
+    .filter(lc => lc.batchId === batchId)
+    .sort((a, b) => new Date(b.scheduledAt || b.createdAt || 0).getTime() - new Date(a.scheduledAt || a.createdAt || 0).getTime());
+
+  const [editing, setEditing] = useState<any | null>(null);
+  const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  const openNew = () => {
+    setEditing({ title: '', meetingLink: '', platform: 'Zoom', scheduledAt: '' });
+    setRecipientMode('all');
+    setSelectedStudentIds([]);
+  };
+
+  const toggleStudent = (id: string) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    const item = {
+      ...editing,
+      batchId,
+      recipientMode,
+      recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
+      createdAt: new Date().toISOString(),
+    };
+    if (editing.id) {
+      MockDB.updateItem('liveClasses', editing.id, item);
+    } else {
+      MockDB.addItem('liveClasses', item);
+    }
+    setEditing(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-slate-800">Live Classes</h3>
+        <button onClick={openNew} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Publish Live Class
+        </button>
+      </div>
+
+      {editing && (
+        <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. SAP MM Module 3 Live Session" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform</label>
+              <select value={editing.platform || 'Zoom'} onChange={e => setEditing({...editing, platform: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option>Zoom</option>
+                <option>Microsoft Teams</option>
+                <option>Google Meet</option>
+                <option>Webex</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date & Time</label>
+              <input required type="datetime-local" value={editing.scheduledAt || ''} onChange={e => setEditing({...editing, scheduledAt: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Meeting Link</label>
+              <input required type="url" value={editing.meetingLink || ''} onChange={e => setEditing({...editing, meetingLink: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="https://..." />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
+                  <span className="text-sm font-semibold text-slate-700">All Students in Batch</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'selected'} onChange={() => setRecipientMode('selected')} />
+                  <span className="text-sm font-semibold text-slate-700">Selected Students</span>
+                </label>
+              </div>
+              {recipientMode === 'selected' && (
+                <div className="mt-3 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-white">
+                  {enrolledStudents.length === 0 && <p className="text-sm text-slate-400">No students enrolled.</p>}
+                  {enrolledStudents.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                      <input type="checkbox" checked={selectedStudentIds.includes(s.id)} onChange={() => toggleStudent(s.id)} />
+                      {s.name} <span className="text-slate-400 text-xs">({s.email})</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Publish Live Class</button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y divide-slate-100 bg-white border border-slate-200 rounded-xl overflow-hidden">
+        {allLiveClasses.map(lc => (
+          <div key={lc.id} className="p-4 flex flex-col sm:flex-row justify-between gap-3 hover:bg-slate-50">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{lc.platform}</span>
+                <span className="text-xs text-slate-500">{lc.scheduledAt ? new Date(lc.scheduledAt).toLocaleString() : ''}</span>
+              </div>
+              <h4 className="font-bold text-slate-800">{lc.title}</h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Recipients: {lc.recipientMode === 'selected' ? `${(lc.recipientIds || []).length} selected students` : 'All students'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a href={lc.meetingLink} target="_blank" rel="noreferrer" className="text-xs font-bold text-indigo-600 hover:underline">Open Link</a>
+              <button onClick={() => MockDB.deleteItem('liveClasses', lc.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
+        {allLiveClasses.length === 0 && !editing && (
+          <div className="p-10 text-center text-slate-500">
+            <Video className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="font-bold text-slate-700">No Live Classes published yet.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StudyMaterialsTab({ batchId }: { batchId: string }) {
   const db = useDB();
-  const materials = db.studyMaterials?.filter(m => m.batchId === batchId) || [];
+  const batch = db.batches?.find(b => b.id === batchId);
+  const enrolledStudents = db.students?.filter(s => batch?.studentIds?.includes(s.id)) || [];
+  const materials = (db.studyMaterials?.filter(m => m.batchId === batchId) || [])
+    .sort((a, b) => new Date(b.uploadDate || b.createdAt || 0).getTime() - new Date(a.uploadDate || a.createdAt || 0).getTime());
   const [editing, setEditing] = useState<Partial<any> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
+  const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  const toggleStudent = (id: string) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
+      const matData = {
+        ...editing,
+        recipientMode,
+        recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
+        createdAt: editing.createdAt || new Date().toISOString(),
+      };
       if (editing.id) {
-        MockDB.updateItem('studyMaterials', editing.id, editing);
+        MockDB.updateItem('studyMaterials', editing.id, matData);
       } else {
-        MockDB.addItem('studyMaterials', { 
-          ...editing, 
-          batchId, 
+        MockDB.addItem('studyMaterials', {
+          ...matData,
+          batchId,
           uploadDate: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
           downloadAllowed: editing.downloadAllowed ?? true,
           visibility: editing.visibility || 'Students'
         });
@@ -868,15 +1020,15 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       else if (['PNG', 'JPG', 'JPEG', 'GIF'].includes(fileExt)) fileExt = 'Images';
       else if (['ZIP', 'RAR'].includes(fileExt)) fileExt = 'ZIP';
 
-      setEditing({
-        ...editing,
-        title: editing?.title || file.name,
+      setEditing(prev => ({
+        ...prev,
+        title: prev?.title || file.name.replace(/\.[^/.]+$/, ''),
         type: fileExt,
         url: downloadUrl,
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type
-      });
+      }));
       setUploadProgress('Upload complete!');
       setTimeout(() => setUploadProgress(''), 2000);
     } catch (err) {
@@ -888,12 +1040,18 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
     }
   };
 
+  const openNew = () => {
+    setEditing({ title: '', description: '', visibility: 'Students', downloadAllowed: true });
+    setRecipientMode('all');
+    setSelectedStudentIds([]);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Study Materials</h3>
-        <button 
-          onClick={() => setEditing({ title: '', description: '', visibility: 'Students', downloadAllowed: true })}
+        <button
+          onClick={openNew}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Add Document
@@ -908,32 +1066,54 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
               <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Chapter 1 Notes" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-              <textarea rows={2} value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Optional description"></textarea>
-            </div>
-            
-            <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Document File</label>
               <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-100 transition-colors">
-                <input 
-                  type="file" 
-                  onChange={handleFileUpload} 
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
                   disabled={uploading}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
                 <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-600">
-                  {uploading ? uploadProgress : (editing.fileName ? `Selected: ${editing.fileName} (Click to replace)` : "Click or drag file to upload")}
+                  {uploading ? uploadProgress : (editing.fileName ? `✓ ${editing.fileName} (Click to replace)` : 'Click or drag file to upload')}
                 </p>
+                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, PPTX, XLSX, images, etc.</p>
               </div>
               {editing.url && !uploading && (
-                <p className="text-xs text-green-600 font-bold mt-2 flex items-center gap-1"><CheckSquare className="w-3 h-3"/> File successfully attached and ready to save</p>
+                <p className="text-xs text-green-600 font-bold mt-2 flex items-center gap-1"><CheckSquare className="w-3 h-3"/> File uploaded and ready to save</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
+                  <span className="text-sm font-semibold text-slate-700">All Students</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'selected'} onChange={() => setRecipientMode('selected')} />
+                  <span className="text-sm font-semibold text-slate-700">Selected Students</span>
+                </label>
+              </div>
+              {recipientMode === 'selected' && (
+                <div className="mt-3 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-white">
+                  {enrolledStudents.length === 0 && <p className="text-sm text-slate-400">No students enrolled.</p>}
+                  {enrolledStudents.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                      <input type="checkbox" checked={selectedStudentIds.includes(s.id)} onChange={() => toggleStudent(s.id)} />
+                      {s.name} <span className="text-slate-400 text-xs">({s.email})</span>
+                    </label>
+                  ))}
+                </div>
               )}
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-            <button type="submit" disabled={uploading || !editing.url} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Save Document</button>
+            <button type="submit" disabled={uploading || !editing.url} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+              {uploading ? 'Uploading...' : 'Save Document'}
+            </button>
           </div>
         </form>
       )}
@@ -944,6 +1124,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
             <tr>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Document Details</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">File</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Recipients</th>
               <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
@@ -963,11 +1144,14 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
                 </td>
                 <td className="px-4 py-4">
                   <p className="text-sm font-semibold text-slate-700">{mat.fileName || 'Legacy Link'}</p>
-                  <p className="text-xs text-slate-500">{mat.type} &bull; {mat.uploadDate}</p>
+                  <p className="text-xs text-slate-500">{mat.type} • {mat.uploadDate}</p>
+                </td>
+                <td className="px-4 py-4 text-xs text-slate-500">
+                  {mat.recipientMode === 'selected' ? `${(mat.recipientIds || []).length} students` : 'All'}
                 </td>
                 <td className="px-4 py-4 text-right">
                   <div className="flex justify-end items-center gap-2">
-                    <button onClick={() => setEditing(mat)} className="text-indigo-600 hover:text-indigo-800 p-2 font-semibold text-sm">Edit</button>
+                    <button onClick={() => { setEditing(mat); setRecipientMode(mat.recipientMode || 'all'); setSelectedStudentIds(mat.recipientIds || []); }} className="text-indigo-600 hover:text-indigo-800 p-2 font-semibold text-sm">Edit</button>
                     <button onClick={() => MockDB.deleteItem('studyMaterials', mat.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </td>
@@ -975,9 +1159,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
             ))}
             {materials.length === 0 && !editing && (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
-                  No documents added yet.
-                </td>
+                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">No documents added yet.</td>
               </tr>
             )}
           </tbody>
@@ -1140,20 +1322,34 @@ function StudentsTab({ batchId }: { batchId: string }) {
 
 function RecordingsTab({ batchId }: { batchId: string }) {
   const db = useDB();
-  const recordings = db.recordings?.filter(r => r.batchId === batchId) || [];
-  const [editing, setEditing] = useState<Partial<import('../../types').Recording> | null>(null);
+  const batch = db.batches?.find(b => b.id === batchId);
+  const enrolledStudents = db.students?.filter(s => batch?.studentIds?.includes(s.id)) || [];
+  const recordings = (db.recordings?.filter(r => r.batchId === batchId) || [])
+    .sort((a, b) => new Date(b.date || b.uploadDate || 0).getTime() - new Date(a.date || a.uploadDate || 0).getTime());
+  const [editing, setEditing] = useState<any | null>(null);
+  const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  const toggleStudent = (id: string) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
+      const recData = {
+        ...editing,
+        batchId,
+        recipientMode,
+        recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
+      };
       if (editing.id) {
-        MockDB.updateItem('recordings', editing.id, editing);
+        MockDB.updateItem('recordings', editing.id, recData);
       } else {
-        const batch = db.batches.find(b => b.id === batchId);
-        MockDB.addItem('recordings', { 
-          ...editing, 
-          batchId, 
-          courseName: batch?.course || '',
+        const batchObj = db.batches.find(b => b.id === batchId);
+        MockDB.addItem('recordings', {
+          ...recData,
+          courseName: batchObj?.course || '',
           uploadDate: new Date().toISOString().split('T')[0],
           visibility: editing.visibility || 'Students',
           thumbnail: editing.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
@@ -1163,12 +1359,18 @@ function RecordingsTab({ batchId }: { batchId: string }) {
     }
   };
 
+  const openNew = () => {
+    setEditing({ title: '', source: 'Google Drive', videoUrl: '', visibility: 'Students', date: new Date().toISOString().split('T')[0] });
+    setRecipientMode('all');
+    setSelectedStudentIds([]);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Recorded Classes</h3>
-        <button 
-          onClick={() => setEditing({ title: '', source: 'Google Drive', videoUrl: '', visibility: 'Students', date: new Date().toISOString().split('T')[0] })}
+        <button
+          onClick={openNew}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Upload Recording
@@ -1215,6 +1417,30 @@ function RecordingsTab({ batchId }: { batchId: string }) {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Link / Video URL</label>
               <input required type="text" value={editing.videoUrl || ''} onChange={e => setEditing({...editing, videoUrl: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
+                  <span className="text-sm font-semibold text-slate-700">All Students</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'selected'} onChange={() => setRecipientMode('selected')} />
+                  <span className="text-sm font-semibold text-slate-700">Selected Students</span>
+                </label>
+              </div>
+              {recipientMode === 'selected' && (
+                <div className="mt-3 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-white">
+                  {enrolledStudents.length === 0 && <p className="text-sm text-slate-400">No students enrolled.</p>}
+                  {enrolledStudents.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                      <input type="checkbox" checked={selectedStudentIds.includes(s.id)} onChange={() => toggleStudent(s.id)} />
+                      {s.name} <span className="text-slate-400 text-xs">({s.email})</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
@@ -1227,7 +1453,7 @@ function RecordingsTab({ batchId }: { batchId: string }) {
         {recordings.map(rec => (
           <div key={rec.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
             <div className="h-32 bg-slate-100 relative">
-              <img src={rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" />
+              <img src={rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                 <a href={rec.videoUrl} target="_blank" rel="noreferrer" className="bg-white/90 text-slate-900 p-3 rounded-full hover:scale-110 transition-transform">
                   <PlayCircle className="w-6 h-6" />
@@ -1237,22 +1463,22 @@ function RecordingsTab({ batchId }: { batchId: string }) {
                 {rec.duration || '--:--'}
               </div>
               {rec.visibility === 'Hidden' && (
-                <div className="absolute top-2 right-2 bg-red-500/90 text-white text-[10px] font-bold px-2 py-1 rounded">
-                  Hidden
-                </div>
+                <div className="absolute top-2 right-2 bg-red-500/90 text-white text-[10px] font-bold px-2 py-1 rounded">Hidden</div>
+              )}
+              {rec.recipientMode === 'selected' && (
+                <div className="absolute top-2 left-2 bg-indigo-600/90 text-white text-[10px] font-bold px-2 py-1 rounded">Selected</div>
               )}
             </div>
             <div className="p-4 flex-1 flex flex-col">
               <h4 className="font-bold text-slate-800 line-clamp-1">{rec.title}</h4>
               {rec.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{rec.description}</p>}
-              
               <div className="mt-auto pt-4 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                   <span className="px-2 py-0.5 bg-slate-100 rounded-md">{rec.source || 'Video'}</span>
                   <span>{rec.date}</span>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => setEditing(rec)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => { setEditing(rec); setRecipientMode(rec.recipientMode || 'all'); setSelectedStudentIds(rec.recipientIds || []); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
                   <button onClick={() => MockDB.deleteItem('recordings', rec.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
@@ -1273,18 +1499,36 @@ function RecordingsTab({ batchId }: { batchId: string }) {
 
 
 
+
 function NotificationsTab({ batchId }: { batchId: string }) {
   const db = useDB();
-  const notifications = db.notifications?.filter(n => n.target === 'Batch' && n.targetId === batchId) || [];
-  const [editing, setEditing] = useState<Partial<import('../../types').Notification> | null>(null);
+  const batch = db.batches?.find(b => b.id === batchId);
+  const enrolledStudents = db.students?.filter(s => batch?.studentIds?.includes(s.id)) || [];
+  const notifications = (db.notifications?.filter(n => n.target === 'Batch' && n.targetId === batchId) || [])
+    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  const [editing, setEditing] = useState<any | null>(null);
+  const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
+  const toggleStudent = (id: string) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
+      const notif = {
+        ...editing,
+        target: 'Batch',
+        targetId: batchId,
+        date: new Date().toISOString(),
+        recipientMode,
+        recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
+      };
       if (editing.id) {
-        MockDB.updateItem('notifications', editing.id, editing);
+        MockDB.updateItem('notifications', editing.id, notif);
       } else {
-        MockDB.addItem('notifications', { ...editing, target: 'Batch', targetId: batchId, date: new Date().toISOString().split('T')[0] });
+        MockDB.addItem('notifications', notif);
       }
       setEditing(null);
     }
@@ -1295,7 +1539,7 @@ function NotificationsTab({ batchId }: { batchId: string }) {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Batch Notifications</h3>
         <button 
-          onClick={() => setEditing({ title: '', message: '', type: 'info' })}
+          onClick={() => { setEditing({ title: '', message: '', type: 'info' }); setRecipientMode('all'); setSelectedStudentIds([]); }}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Send Notification
@@ -1321,6 +1565,30 @@ function NotificationsTab({ batchId }: { batchId: string }) {
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message</label>
               <textarea required rows={3} value={editing.message || ''} onChange={e => setEditing({...editing, message: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
             </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
+                  <span className="text-sm font-semibold text-slate-700">All Students</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={recipientMode === 'selected'} onChange={() => setRecipientMode('selected')} />
+                  <span className="text-sm font-semibold text-slate-700">Selected Students</span>
+                </label>
+              </div>
+              {recipientMode === 'selected' && (
+                <div className="mt-3 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-white">
+                  {enrolledStudents.length === 0 && <p className="text-sm text-slate-400">No students enrolled.</p>}
+                  {enrolledStudents.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-slate-700">
+                      <input type="checkbox" checked={selectedStudentIds.includes(s.id)} onChange={() => toggleStudent(s.id)} />
+                      {s.name} <span className="text-slate-400 text-xs">({s.email})</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
@@ -1338,7 +1606,7 @@ function NotificationsTab({ batchId }: { batchId: string }) {
                 {n.title}
               </h4>
               <p className="text-sm text-slate-600 mt-1">{n.message}</p>
-              <p className="text-xs text-slate-500 mt-2">{n.date}</p>
+              <p className="text-xs text-slate-500 mt-2">{n.date ? new Date(n.date).toLocaleString() : ''} {n.recipientMode === 'selected' ? `• ${(n.recipientIds||[]).length} recipients` : '• All students'}</p>
             </div>
             <button onClick={() => MockDB.deleteItem('notifications', n.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
           </div>
@@ -1348,6 +1616,7 @@ function NotificationsTab({ batchId }: { batchId: string }) {
     </div>
   );
 }
+
 
 
 
@@ -1486,12 +1755,12 @@ export default function BatchDashboard() {
     { name: 'Course Calendar', icon: Calendar },
     { name: 'Weekly Planner', icon: Calendar },
     { name: "Today's Session", icon: Video },
+    { name: 'Live Classes', icon: Video },
     { name: 'Study Materials', icon: FileText },
     { name: 'Recordings', icon: PlayCircle },
     { name: 'Notifications', icon: MessageSquare },
     { name: 'Doubt Support', icon: MessageSquare },
     { name: 'Reviews & Feedback', icon: Star },
-    { name: 'Settings', icon: Settings },
   ];
 
   return (
@@ -1527,12 +1796,12 @@ export default function BatchDashboard() {
         {activeTab === 'Course Calendar' && <CourseCalendarTab batchId={batchId as string} />}
         {activeTab === 'Weekly Planner' && <WeeklyPlannerTab batchId={batchId as string} />}
         {activeTab === 'Study Materials' && <StudyMaterialsTab batchId={batchId as string} />}
+        {activeTab === 'Live Classes' && <LiveClassesTab batchId={batchId as string} />}
         {activeTab === 'Students' && <StudentsTab batchId={batchId as string} />}
         {activeTab === 'Recordings' && <RecordingsTab batchId={batchId as string} />}
         {activeTab === 'Notifications' && <NotificationsTab batchId={batchId as string} />}
         {activeTab === 'Doubt Support' && <DoubtSupportTab batchId={batchId as string} />}
         {activeTab === 'Reviews & Feedback' && <ReviewsFeedbackTab batchId={batchId as string} />}
-        {activeTab === 'Settings' && <div className="text-slate-500 py-8 text-center">Batch settings and configuration.</div>}
       </div>
     </div>
   );

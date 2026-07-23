@@ -21,6 +21,7 @@ const COLLECTIONS_TO_SYNC: (keyof DatabaseSchema)[] = [
   'mentors',
   'batchPlanner',
   'batchSessions',
+  'liveClasses',
   'studyMaterials',
   'sessionFeedback',
   'courseRatings',

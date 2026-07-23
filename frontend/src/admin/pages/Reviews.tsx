@@ -106,7 +106,7 @@ export default function Reviews() {
                   <p className="text-sm font-semibold text-slate-800">{review.course || review.module}</p>
                   <p className="text-xs text-slate-500">{db.batches?.find(b => b.id === review.batchId)?.name || review.batchId}</p>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{review.text}</td>
+                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{review.content || review.text}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{review.rating} / 5</td>
                 <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${

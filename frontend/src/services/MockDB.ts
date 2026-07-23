@@ -10,6 +10,7 @@ const initialData: DatabaseSchema = {
   batches: [],
   batchPlanner: [],
   batchSessions: [],
+  liveClasses: [],
   studyMaterials: [],
   sessionFeedback: [],
   courseRatings: [],

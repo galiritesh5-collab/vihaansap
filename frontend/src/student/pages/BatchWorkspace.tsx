@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockDB } from '../../services/MockDB';
 import { downloadFile } from '../../utils/downloadFile';
-import { BookOpen, Calendar, Video, FileText, PlayCircle, MessageSquare, HelpCircle, ArrowLeft, CheckCircle, Send, Paperclip, Star, X, Download } from 'lucide-react';
+import { BookOpen, Calendar, Video, FileText, PlayCircle, MessageSquare, HelpCircle, ArrowLeft, CheckCircle, Send, Paperclip, Star, X, Download, Bell } from 'lucide-react';
 
 export default function BatchWorkspace() {
   const { batchId } = useParams();
@@ -20,48 +20,104 @@ export default function BatchWorkspace() {
 
   if (!batch || !course) return <div className="p-8">Batch not found</div>;
 
-  const tabs = ['Overview', 'Weekly Planner', "Today's Session", 'Study Materials', 'Recorded Classes', 'Notifications', 'Doubts'];
+  const tabs = ['Overview', 'Weekly Planner', "Today's Session", 'Live Classes', 'Study Materials', 'Recorded Classes', 'Notifications', 'Doubts'];
 
   // Data
-  const materials = db.studyMaterials?.filter(m => m.batchId === batchId && m.visibility !== 'Hidden' && (!m.visibilitySettings || m.visibilitySettings.mode === 'All' || m.visibilitySettings.studentIds?.includes(studentProfile?.id))) || [];
-  const recordings = db.recordings?.filter(r => r.batchId === batchId && r.visibility !== 'Hidden' && (!r.visibilitySettings || r.visibilitySettings.mode === 'All' || r.visibilitySettings.studentIds?.includes(studentProfile?.id))) || [];
-  const notifications = db.notifications?.filter(n => 
-    n.target === 'Entire Platform' || 
-    (n.target === 'Course' && n.targetId === course.name) || 
-    (n.target === 'Batch' && n.targetId === batchId) ||
-    (n.target === 'Student' && n.targetId === studentProfile.id)
-  ) || [];
+  const materials = (db.studyMaterials?.filter(m => {
+    if (m.batchId !== batchId) return false;
+    if (m.visibility === 'Hidden') return false;
+    if (m.recipientMode === 'selected') {
+      return (m.recipientIds || []).includes(studentProfile?.id) || (m.visibilitySettings?.studentIds || []).includes(studentProfile?.id);
+    }
+    if (m.visibilitySettings?.mode === 'Selected') {
+      return m.visibilitySettings.studentIds?.includes(studentProfile?.id);
+    }
+    return true;
+  }) || []).sort((a, b) => new Date(b.uploadDate || b.createdAt || 0).getTime() - new Date(a.uploadDate || a.createdAt || 0).getTime());
+
+  const recordings = (db.recordings?.filter(r => {
+    if (r.batchId !== batchId) return false;
+    if (r.visibility === 'Hidden') return false;
+    if (r.recipientMode === 'selected') {
+      return (r.recipientIds || []).includes(studentProfile?.id) || (r.visibilitySettings?.studentIds || []).includes(studentProfile?.id);
+    }
+    if (r.visibilitySettings?.mode === 'Selected') {
+      return r.visibilitySettings.studentIds?.includes(studentProfile?.id);
+    }
+    return true;
+  }) || []).sort((a, b) => new Date(b.date || b.uploadDate || 0).getTime() - new Date(a.date || a.uploadDate || 0).getTime());
+
+  // Notifications: filter by batch, respect recipient targeting, newest first
+  const notifications = (db.notifications?.filter(n => {
+    const isBatchNotif = n.target === 'Batch' && n.targetId === batchId;
+    const isGlobal = n.target === 'Entire Platform';
+    const isCourse = n.target === 'Course' && n.targetId === course.name;
+    const isStudent = n.target === 'Student' && n.targetId === studentProfile?.id;
+    if (!isBatchNotif && !isGlobal && !isCourse && !isStudent) return false;
+    // If batch notification with selected recipients, check student is included
+    if (isBatchNotif && n.recipientMode === 'selected') {
+      return (n.recipientIds || []).includes(studentProfile?.id);
+    }
+    return true;
+  }) || []).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+  // Unread notifications badge — stored in localStorage per student
+  const storageKey = `notif_read_${studentProfile?.id}_${batchId}`;
+  const readIds: string[] = (() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  })();
+  const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
+
+  const markAllRead = () => {
+    const allIds = notifications.map(n => n.id);
+    localStorage.setItem(storageKey, JSON.stringify(allIds));
+  };
+
   const doubts = db.doubts?.filter(d => d.batchId === batchId && d.studentId === studentProfile.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
 
-  // Detect feedback request notification
+  // Detect feedback request notification for this batch
   const feedbackRequested = db.notifications?.some(n => n.targetId === batchId && n.isFeedbackRequest) || false;
-  const hasSubmittedReview = db.reviews?.some((r: any) => r.batchId === batchId && r.studentId === studentProfile?.id) || false;
+  const hasSubmittedReview = db.reviews?.some((r: any) => r.batchId === batchId && (r.studentId === studentProfile?.id || r.studentId === studentProfile?.uid)) || false;
 
-    
-    // Filter session based on visibleFrom / visibleUntil if they exist
-    const now = new Date();
-    const activeSessions = sessions.filter(s => {
-      if (s.visibleFrom && new Date(s.visibleFrom) > now) return false;
-      if (s.visibleUntil && new Date(s.visibleUntil) < now) return false;
-      return true;
-    });
+  // Filter session based on visibleFrom / visibleUntil if they exist
+  const now = new Date();
+  const activeSessions = sessions.filter(s => {
+    if (s.visibleFrom && new Date(s.visibleFrom) > now) return false;
+    if (s.visibleUntil && new Date(s.visibleUntil) < now) return false;
+    return true;
+  });
 
-    const todaySession = activeSessions.find(s => s.status === 'Live') || activeSessions.find(s => s.status === 'Upcoming');
-  
+  const todaySession = activeSessions.find(s => s.status === 'Live') || activeSessions.find(s => s.status === 'Upcoming');
+
+  // Live Classes: filter by batch + recipient + 5-hour expiry
+  const liveClasses = (db.liveClasses?.filter(lc => {
+    if (lc.batchId !== batchId) return false;
+    // Recipient filtering
+    if (lc.recipientMode === 'selected') {
+      if (!(lc.recipientIds || []).includes(studentProfile?.id)) return false;
+    }
+    // 5-hour expiry
+    if (lc.scheduledAt) {
+      const classTime = new Date(lc.scheduledAt);
+      const expiryTime = new Date(classTime.getTime() + 5 * 60 * 60 * 1000);
+      if (now > expiryTime) return false;
+    }
+    return true;
+  }) || []).sort((a, b) => new Date(a.scheduledAt || 0).getTime() - new Date(b.scheduledAt || 0).getTime());
+
   // Planners
   const planners = db.batchPlanner?.filter(p => p.batchId === batchId).sort((a, b) => a.weekNumber - b.weekNumber) || [];
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6">
 
-      {/* Review Submission Modal */}
+      {/* Review Submission Modal — shown when admin sends review request and student hasn't submitted */}
       {(showFeedbackModal || (feedbackRequested && !hasSubmittedReview)) && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-slate-800">Submit Your Review</h3>
-              
             </div>
             {reviewSubmitted ? (
               <div className="text-center py-6">
@@ -73,27 +129,31 @@ export default function BatchWorkspace() {
             ) : (
               <form onSubmit={(e) => {
                 e.preventDefault();
+                const batchObj = db.batches?.find(b => b.id === batchId);
                 MockDB.addItem('reviews', {
                   name: studentProfile?.name || 'Student',
                   role: 'Student',
                   course: course.name,
                   batchId,
-                  studentId: studentProfile?.id,
+                  batchName: batchObj?.name || '',
+                  studentId: studentProfile?.id || studentProfile?.uid,
+                  // store in both content and text so both Admin views display it
                   content: reviewText,
+                  text: reviewText,
                   rating: reviewRating,
                   status: 'Pending',
-                  date: new Date().toISOString()
+                  submittedAt: new Date().toISOString(),
+                  date: new Date().toISOString(),
                 });
-                  // Remove the notification if it exists
-                  const reqNotif = db.notifications?.find(n => n.targetId === batchId && n.isFeedbackRequest);
-                  if (reqNotif) {
-                    MockDB.deleteItem('notifications', reqNotif.id);
-                  }
-                  setReviewSubmitted(true);
-
+                // Remove the feedback request notification so popup goes away
+                const reqNotif = db.notifications?.find(n => n.targetId === batchId && n.isFeedbackRequest);
+                if (reqNotif) {
+                  MockDB.deleteItem('notifications', reqNotif.id);
+                }
+                setReviewSubmitted(true);
               }} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Rating</label>
+                  <p className="text-sm font-semibold text-slate-700 mb-3">How would you rate your overall course experience?</p>
                   <div className="flex gap-1">
                     {[1,2,3,4,5].map(s => (
                       <button key={s} type="button" onClick={() => setReviewRating(s)}>
@@ -103,7 +163,7 @@ export default function BatchWorkspace() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Your Feedback</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Share your feedback</label>
                   <textarea required value={reviewText} onChange={e => setReviewText(e.target.value)} placeholder="Share your experience with this course..." rows={4} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
                 </div>
                 <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors">Submit Review</button>
@@ -144,12 +204,18 @@ export default function BatchWorkspace() {
           {tabs.map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap px-6 py-4 text-sm font-bold border-b-2 transition-colors ${
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === 'Notifications') markAllRead();
+              }}
+              className={`relative whitespace-nowrap px-6 py-4 text-sm font-bold border-b-2 transition-colors ${
                 activeTab === tab ? 'border-indigo-600 text-indigo-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
               {tab}
+              {tab === 'Notifications' && unreadCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">{unreadCount}</span>
+              )}
             </button>
           ))}
         </div>
@@ -165,12 +231,12 @@ export default function BatchWorkspace() {
                   <p className="font-bold text-slate-800">{batch.schedule}</p>
                </div>
                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Progress</p>
-                  <p className="font-bold text-slate-800">{studentProfile.progress || 0}% Completed</p>
-               </div>
-               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</p>
                   <p className="font-bold text-slate-800">{batch.status}</p>
+               </div>
+               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Students</p>
+                  <p className="font-bold text-slate-800">{batch.students || 0}</p>
                </div>
                <div className="col-span-1 md:col-span-2 lg:col-span-4 mt-4">
                  <h4 className="font-bold text-slate-800 mb-4">Latest Updates</h4>
@@ -192,7 +258,7 @@ export default function BatchWorkspace() {
                  <h4 className="font-bold text-slate-800 mb-4">Course Syllabus</h4>
                  {course.syllabus && course.syllabus.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {course.syllabus.map((topic, i) => (
+                      {course.syllabus.map((topic: string, i: number) => (
                         <div key={i} className="bg-white p-3.5 rounded-lg border border-slate-200 text-xs flex items-start gap-2.5 shadow-sm">
                           <span className="w-5 h-5 rounded-full bg-[#1763B6]/10 text-[#1763B6] font-display font-extrabold text-[10px] flex items-center justify-center shrink-0">
                             {i + 1}
@@ -241,7 +307,37 @@ export default function BatchWorkspace() {
                 <div className="p-12 text-center text-slate-500 flex flex-col items-center">
                    <Video className="w-12 h-12 text-slate-300 mb-4" />
                    <h3 className="text-lg font-bold text-slate-700">No Session Today</h3>
-                   <p className="text-sm mt-1 max-w-sm">There is no live session scheduled for today. Check the Weekly Planner for upcoming sessions.</p>
+                   <p className="text-sm mt-1 max-w-sm">There is no live session scheduled for today.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'Live Classes' && (
+            <div className="space-y-4">
+              {liveClasses.length > 0 ? liveClasses.map(lc => (
+                <div key={lc.id} className="p-5 border border-slate-200 rounded-xl bg-white shadow-sm flex flex-col sm:flex-row justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{lc.platform}</span>
+                      <span className="text-xs text-slate-500">{lc.scheduledAt ? new Date(lc.scheduledAt).toLocaleString() : ''}</span>
+                    </div>
+                    <h4 className="font-bold text-slate-800">{lc.title}</h4>
+                  </div>
+                  <a
+                    href={lc.meetingLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-colors self-start sm:self-center"
+                  >
+                    <Video className="w-4 h-4" /> Join Live Class
+                  </a>
+                </div>
+              )) : (
+                <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                  <Video className="w-12 h-12 text-slate-300 mb-4" />
+                  <h3 className="text-lg font-bold text-slate-700">No Live Classes</h3>
+                  <p className="text-sm mt-1 max-w-sm">No upcoming live classes are scheduled for you in this batch.</p>
                 </div>
               )}
             </div>
@@ -261,8 +357,10 @@ export default function BatchWorkspace() {
                       </div>
                    </div>
                    <div className="flex items-center gap-2">
-                     <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
-                     {m.downloadAllowed !== false && (
+                     {m.url && !m.url.startsWith('data:') && (
+                       <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
+                     )}
+                     {m.downloadAllowed !== false && m.url && (
                        <button onClick={() => downloadFile(m.url, m.fileName || m.title)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
                          <Download className="w-4 h-4" /> Download
                        </button>
@@ -284,7 +382,7 @@ export default function BatchWorkspace() {
               {recordings.length > 0 ? recordings.map(r => (
                 <div key={r.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm flex flex-col group">
                    <div className="h-40 bg-slate-100 relative">
-                     <img src={r.thumbnail} alt={r.title} className="w-full h-full object-cover" />
+                     <img src={r.thumbnail} alt={r.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                        <a href={r.videoUrl} target="_blank" rel="noreferrer" className="bg-white/90 text-slate-900 p-3 rounded-full hover:scale-110 transition-transform">
                          <PlayCircle className="w-6 h-6" />
@@ -309,11 +407,10 @@ export default function BatchWorkspace() {
           {activeTab === 'Notifications' && (
             <div className="space-y-4">
               {notifications.length > 0 ? notifications.map(n => (
-                <div key={n.id} className={`p-4 border rounded-xl ${n.priority === 'Urgent' ? 'border-red-200 bg-red-50/30' : n.priority === 'Important' ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-white'}`}>
+                <div key={n.id} className={`p-4 border rounded-xl ${n.type === 'alert' ? 'border-red-200 bg-red-50/30' : n.type === 'success' ? 'border-green-200 bg-green-50/30' : 'border-slate-200 bg-white'}`}>
                   <div className="flex items-center gap-2 mb-2">
-                    {n.priority === 'Urgent' && <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded">Urgent</span>}
-                    {n.priority === 'Important' && <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider rounded">Important</span>}
-                    <span className="text-xs font-semibold text-slate-500">{n.date}</span>
+                    <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${n.type === 'alert' ? 'bg-red-100 text-red-700' : n.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{n.type || 'info'}</span>
+                    <span className="text-xs font-semibold text-slate-500">{n.date ? new Date(n.date).toLocaleString() : ''}</span>
                   </div>
                   <h4 className="font-bold text-slate-800">{n.title}</h4>
                   <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{n.message}</p>
@@ -357,36 +454,6 @@ export default function BatchWorkspace() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {activeTab === 'Progress' && (
-            <div className="max-w-2xl space-y-6">
-               <div className="p-6 border border-slate-200 rounded-xl bg-white shadow-sm">
-                  <h3 className="font-bold text-slate-800 text-lg mb-4">Course Progress</h3>
-                  <div className="flex items-center justify-between text-sm font-bold text-slate-700 mb-2">
-                    <span>Completion</span>
-                    <span>{studentProfile.progress || 0}%</span>
-                  </div>
-                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${studentProfile.progress || 0}%` }}></div>
-                  </div>
-               </div>
-               <div className="p-6 border border-slate-200 rounded-xl bg-white shadow-sm">
-                 <h3 className="font-bold text-slate-800 text-lg mb-4">Completed Modules</h3>
-                 {studentProfile.completedModules && studentProfile.completedModules.length > 0 ? (
-                   <ul className="space-y-3">
-                     {studentProfile.completedModules.map((m: string, i: number) => (
-                       <li key={i} className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                         <CheckCircle className="w-5 h-5 text-green-500" />
-                         {m}
-                       </li>
-                     ))}
-                   </ul>
-                 ) : (
-                   <div className="text-slate-500 text-sm italic">No modules completed yet.</div>
-                 )}
-               </div>
             </div>
           )}
         </div>
