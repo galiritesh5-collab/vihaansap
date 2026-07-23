@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { FileText, Download, ExternalLink, Calendar } from 'lucide-react';
+import { downloadFile } from '../../utils/downloadFile';
 
 export default function StudyMaterials() {
   const { studentProfile } = useAuth();
@@ -48,16 +49,25 @@ export default function StudyMaterials() {
                     </div>
                   </div>
                 </div>
-                <a 
-                  href={mat.url} 
-                  download={mat.type !== 'Link'}
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#1763B6] text-slate-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors shrink-0 shadow-sm"
-                >
-                  {mat.type === 'Link' ? <ExternalLink className="w-4 h-4" /> : <Download className="w-4 h-4" />}
-                  {mat.type === 'Link' ? 'Open Link' : 'Download'}
-                </a>
+                  {mat.type === 'Link' ? (
+                    <a 
+                      href={mat.url} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#1763B6] text-slate-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors shrink-0 shadow-sm"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Open Link
+                    </a>
+                  ) : (
+                    <button
+                      onClick={() => downloadFile(mat.url, mat.title)}
+                      className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:text-[#1763B6] text-slate-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors shrink-0 shadow-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </button>
+                  )}
               </div>
             )})}
           </div>

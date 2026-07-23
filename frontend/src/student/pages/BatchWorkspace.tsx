@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockDB } from '../../services/MockDB';
+import { downloadFile } from '../../utils/downloadFile';
 import { BookOpen, Calendar, Video, FileText, PlayCircle, MessageSquare, HelpCircle, ArrowLeft, CheckCircle, Send, Paperclip, Star, X, Download } from 'lucide-react';
 
 export default function BatchWorkspace() {
@@ -133,7 +134,7 @@ export default function BatchWorkspace() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="flex overflow-x-auto hide-scrollbar border-b border-slate-200 bg-slate-50">
+        <div className="flex overflow-x-auto scrollbar-hide border-b border-slate-200 bg-slate-50" style={{ WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(tab => (
             <button
               key={tab}
@@ -256,9 +257,9 @@ export default function BatchWorkspace() {
                    <div className="flex items-center gap-2">
                      <a href={m.url} target="_blank" rel="noreferrer" className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-sm rounded-lg transition-colors">View</a>
                      {m.downloadAllowed !== false && (
-                       <a href={m.url} download target="_blank" rel="noreferrer" className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
+                       <button onClick={() => downloadFile(m.url, m.title)} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-sm rounded-lg transition-colors flex items-center gap-1">
                          <Download className="w-4 h-4" /> Download
-                       </a>
+                       </button>
                      )}
                    </div>
                 </div>

@@ -11,29 +11,31 @@ export default function HeaderBar() {
   
 
   return (
-    <div id="top-header" className="bg-[#1763B6] text-slate-100 text-xs py-2 shadow-sm border-b border-slate-200/10 relative z-40">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2 px-4 sm:px-6 lg:px-8">
+    <div id="top-header" className="bg-[#1763B6] text-slate-100 text-xs py-2.5 sm:py-2 shadow-sm border-b border-slate-200/10 relative z-40">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3 sm:gap-2 px-4 sm:px-6 lg:px-8">
         
         {/* Left Side: Contact Information */}
-        <div id="header-contact" className="flex flex-wrap justify-center sm:justify-start items-center gap-6 text-[11px] sm:text-xs font-medium">
-          <a 
-            href={`mailto:${brandingConfig?.supportEmail}`} 
-            className="flex items-center gap-1.5 hover:text-[#F4A62A] opacity-90 hover:opacity-100 transition-colors pointer-events-auto"
-            id="link-support-email"
-          >
-            ✉️ <span>{brandingConfig?.supportEmail || 'info@srivihaanconsulting.com'}</span>
-          </a>
-          <a 
-            href={`tel:${brandingConfig?.primaryMobile}`} 
-            className="flex items-center gap-1.5 hover:text-[#F4A62A] opacity-90 hover:opacity-100 transition-colors pointer-events-auto font-medium"
-            id="link-support-phone"
-          >
-            📞 <span>{brandingConfig?.primaryMobile || '+91 70759 99336'}</span>
-          </a>
+        <div id="header-contact" className="flex flex-col sm:flex-row justify-center sm:justify-start items-center gap-2 sm:gap-6 text-[12px] sm:text-xs font-medium w-full sm:w-auto">
+          <div className="flex items-center justify-center gap-4 sm:gap-6 w-full sm:w-auto">
+            <a 
+              href={`mailto:${brandingConfig?.supportEmail}`} 
+              className="flex items-center gap-1.5 hover:text-[#F4A62A] opacity-90 hover:opacity-100 transition-colors pointer-events-auto"
+              id="link-support-email"
+            >
+              <Mail className="w-3.5 h-3.5" /> <span>{brandingConfig?.supportEmail || 'info@srivihaanconsulting.com'}</span>
+            </a>
+            <a 
+              href={`tel:${brandingConfig?.primaryMobile}`} 
+              className="flex items-center gap-1.5 hover:text-[#F4A62A] opacity-90 hover:opacity-100 transition-colors pointer-events-auto font-medium"
+              id="link-support-phone"
+            >
+              <Phone className="w-3.5 h-3.5" /> <span>{brandingConfig?.primaryMobile || '+91 70759 99336'}</span>
+            </a>
+          </div>
         </div>
 
         {/* Right Side: Language & Social Media Icons */}
-        <div id="header-utilities" className="flex items-center gap-5 font-medium">
+        <div id="header-utilities" className="flex items-center justify-center w-full sm:w-auto gap-5 font-medium mt-1 sm:mt-0">
           
 
           {/* Social Icons */}

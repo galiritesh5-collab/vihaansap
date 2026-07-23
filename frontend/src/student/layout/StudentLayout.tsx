@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, BookOpen, MonitorPlay, Video, 
@@ -43,7 +43,7 @@ export default function StudentLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
-
+  const [unreadCount, setUnreadCount] = useState(0);
   const status = useStudentStatus(user?.uid, studentProfile?.id);
 
   if (loading) {
@@ -63,6 +63,29 @@ export default function StudentLayout() {
     const hasFeedback = db.courseRatings?.some(r => r.batchId === b.id && r.studentId === user?.uid);
     return !hasFeedback;
   });
+
+  const notifications = db.notifications?.filter(n => {
+    if (n.target === 'Everyone' || n.target === 'Students') return true;
+    if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return true;
+    if (n.target === 'Course' && myBatches.some(b => b.course === n.targetId)) return true;
+    if (n.target === 'Specific Student' && n.targetId === studentProfile?.id) return true;
+    return false;
+  }) || [];
+  
+  useEffect(() => {
+    const lastRead = localStorage.getItem('lastReadNotifications');
+    if (location.pathname === '/student/notifications') {
+      localStorage.setItem('lastReadNotifications', new Date().toISOString());
+      setUnreadCount(0);
+    } else {
+      if (!lastRead) {
+        setUnreadCount(notifications.length);
+      } else {
+        const unread = notifications.filter(n => new Date(n.date) > new Date(lastRead));
+        setUnreadCount(unread.length);
+      }
+    }
+  }, [location.pathname, notifications]);
 
   const navItems = [
     { name: 'Dashboard',        path: '/student/dashboard',     icon: LayoutDashboard },
@@ -127,7 +150,7 @@ export default function StudentLayout() {
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
                 className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative
                   ${isActive
                     ? 'bg-[#1763B6] text-white font-medium shadow-sm'
                     : 'text-slate-300 hover:bg-[#145096] hover:text-white'
@@ -135,7 +158,12 @@ export default function StudentLayout() {
                 `}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span className="text-sm">{item.name}</span>
+                <span className="text-sm flex-1">{item.name}</span>
+                {item.name === 'Notifications' && unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full absolute right-3">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}

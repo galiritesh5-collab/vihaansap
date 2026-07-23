@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -70,7 +70,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-8">
+    <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
       
       {/* Welcome Section */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-100 shadow-sm relative overflow-hidden">
@@ -88,7 +88,7 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat) => (
-          <div key={stat.name} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+          <div key={stat.name} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-500">{stat.name}</p>
@@ -112,7 +112,7 @@ export default function Dashboard() {
               <h3 className="font-bold text-slate-800 text-lg">My Active Batches</h3>
               <Link to="/student/courses" className="text-sm font-semibold text-[#1763B6] hover:underline">View All</Link>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {myBatches.length > 0 ? myBatches.slice(0, 2).map(batch => {
                 const course = db.courses.find(c => c.name === batch.course);
                 return (
@@ -145,7 +145,7 @@ export default function Dashboard() {
               <h3 className="font-bold text-slate-800 text-lg">Upcoming Live Sessions</h3>
               <Link to="/student/live-classes" className="text-sm font-semibold text-[#1763B6] hover:underline">View Schedule</Link>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {upcomingSessions.length > 0 ? upcomingSessions.slice(0, 2).map(cls => {
                 const batch = db.batches.find(b => b.id === cls.batchId);
                 return (

@@ -439,7 +439,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
           <h3 className="text-lg font-bold text-slate-800">Course Calendar</h3>
           {syllabus.length > 0 && (
             <p className="text-xs text-slate-500 mt-1">
-              Auto-imported from <span className="font-semibold text-indigo-600">{course?.name}</span> syllabus â€¢ {completedSessions}/{totalSessions} sessions completed
+              Auto-imported from <span className="font-semibold text-indigo-600">{course?.name}</span> syllabus • {completedSessions}/{totalSessions} sessions completed
             </p>
           )}
         </div>
@@ -458,7 +458,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <p className="text-amber-700 font-semibold text-sm">No syllabus found for this batch's course.</p>
           <p className="text-amber-600 text-xs mt-1">
-            Go to <strong>Admin â†’ Courses â†’ {batch?.course}</strong> and add syllabus topics. They will appear here automatically.
+            Go to <strong>Admin → Courses → {batch?.course}</strong> and add syllabus topics. They will appear here automatically.
           </p>
         </div>
       )}
@@ -558,7 +558,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
                           onClick={() => setExpandedRow(expandedRow === idx ? null : idx)}
                           className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold hover:bg-slate-200 transition-colors"
                         >
-                          {s.subTopics.length} Subtopics {expandedRow === idx ? 'â–²' : 'â–¼'}
+                          {s.subTopics.length} Subtopics {expandedRow === idx ? '▲' : '▼'}
                         </button>
                       )}
                     </div>
@@ -596,7 +596,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
                         }}
                         className="text-emerald-600 hover:text-emerald-800 text-xs font-bold p-1"
                       >
-                        âœ“ Done
+                        ✓ Done
                       </button>
                     )}
                   </td>
@@ -720,7 +720,7 @@ function OverviewTab({ batchId }: { batchId: string }) {
              {todaySession ? (
                <div>
                  <p className="text-sm font-bold text-indigo-600">{todaySession.topic}</p>
-                 <p className="text-xs text-slate-500 mt-1">{todaySession.date} â€¢ {todaySession.time}</p>
+                 <p className="text-xs text-slate-500 mt-1">{todaySession.date} • {todaySession.time}</p>
                  <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider rounded">{todaySession.status}</span>
                </div>
              ) : (
@@ -846,10 +846,10 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Study Materials</h3>
         <button 
-          onClick={() => setEditing({ title: '', type: 'PDF', url: '', visibility: 'Students', downloadAllowed: true })}
+          onClick={() => setEditing({ title: '', type: 'PDF', visibility: 'Students', downloadAllowed: true })}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Add Material / Link
+          <Plus className="w-4 h-4" /> Add Material
         </button>
       </div>
 
@@ -890,11 +890,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
                 <option value="ZIP">ZIP</option>
                 <option value="TXT">TXT</option>
                 <option value="Images">Images</option>
-                <option value="Video Links">Video Links</option>
-                <option value="Google Drive Links">Google Drive Links</option>
-                <option value="OneDrive Links">OneDrive Links</option>
-                <option value="Microsoft Teams Files">Microsoft Teams Files</option>
-                <option value="Link">External Link</option>
+                <option value="Other">Other uploaded files</option>
               </select>
             </div>
             <div>
@@ -903,10 +899,6 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
                 <option value="">No Session Assigned</option>
                 {sessions.map(s => <option key={s.id} value={s.id}>{s.topic} ({s.date})</option>)}
               </select>
-            </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">URL / Link</label>
-              <input required type="text" value={editing.url || ''} onChange={e => setEditing({...editing, url: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visibility</label>
