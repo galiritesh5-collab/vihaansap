@@ -329,15 +329,7 @@ export default function Students() {
                     <option value="Dropped">Dropped</option>
                   </select>
 
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Course Progress ({editProgress}%)</label>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="100" 
-                    value={editProgress}
-                    onChange={(e) => setEditProgress(parseInt(e.target.value))}
-                    className="w-full"
-                  />
+
                 </div>
 
                 <button onClick={handleSaveChanges} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors mt-2">
