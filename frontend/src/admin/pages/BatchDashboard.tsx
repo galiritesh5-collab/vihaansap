@@ -786,6 +786,665 @@ function FeedbackTab({ batchId }: { batchId: string }) {
   );
 }
 
+function StudyMaterialsTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const materials = db.studyMaterials?.filter(m => m.batchId === batchId) || [];
+  const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
+  const [editing, setEditing] = useState<Partial<StudyMaterial> | null>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editing) {
+      if (editing.id) {
+        MockDB.updateItem('studyMaterials', editing.id, editing);
+      } else {
+        MockDB.addItem('studyMaterials', { 
+          ...editing, 
+          batchId, 
+          uploadDate: new Date().toISOString().split('T')[0],
+          downloadAllowed: editing.downloadAllowed ?? true,
+          visibility: editing.visibility || 'Students'
+        });
+      }
+      setEditing(null);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    // Process each file (mocking actual upload)
+    Array.from(files as FileList).forEach((file: File) => {
+      let fileExt = file.name.split('.').pop()?.toUpperCase() || 'PDF';
+      if (['PPTX'].includes(fileExt)) fileExt = 'PPTX';
+      else if (['DOCX'].includes(fileExt)) fileExt = 'DOCX';
+      else if (['XLS', 'XLSX', 'CSV'].includes(fileExt)) fileExt = 'Excel';
+      else if (['PNG', 'JPG', 'JPEG', 'GIF'].includes(fileExt)) fileExt = 'Images';
+      
+      const newMaterial = {
+        title: file.name,
+        description: 'Uploaded from device',
+        type: fileExt,
+        url: '#', // mock URL
+        visibility: 'Students',
+        downloadAllowed: true
+      };
+      
+      MockDB.addItem('studyMaterials', {
+        ...newMaterial,
+        batchId,
+        uploadDate: new Date().toISOString().split('T')[0]
+      });
+    });
+    
+    e.target.value = ''; // reset input
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-slate-800">Study Materials</h3>
+        <button 
+          onClick={() => setEditing({ title: '', type: 'PDF', url: '', visibility: 'Students', downloadAllowed: true })}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Add Material / Link
+        </button>
+      </div>
+
+      <div className="bg-white border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors relative">
+        <input 
+          type="file" 
+          multiple
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          onChange={handleFileUpload}
+        />
+        <div className="flex flex-col items-center justify-center">
+          <FileText className="w-10 h-10 text-slate-400 mb-3" />
+          <p className="text-slate-600 font-medium">Drag & Drop files here, or click to <span className="text-indigo-600">Upload From Device</span></p>
+          <p className="text-slate-400 text-xs mt-2">Supports PDF, PPT, DOC, Excel, ZIP, TXT, Images. Multiple files allowed.</p>
+        </div>
+      </div>
+
+      {editing && (
+        <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+              <textarea value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows={2} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type</label>
+              <select value={editing.type || 'PDF'} onChange={e => setEditing({...editing, type: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="PDF">PDF</option>
+                <option value="PPT">PPT</option>
+                <option value="PPTX">PPTX</option>
+                <option value="DOC">DOC</option>
+                <option value="DOCX">DOCX</option>
+                <option value="Excel">Excel</option>
+                <option value="ZIP">ZIP</option>
+                <option value="TXT">TXT</option>
+                <option value="Images">Images</option>
+                <option value="Video Links">Video Links</option>
+                <option value="Google Drive Links">Google Drive Links</option>
+                <option value="OneDrive Links">OneDrive Links</option>
+                <option value="Microsoft Teams Files">Microsoft Teams Files</option>
+                <option value="Link">External Link</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign to Session (Optional)</label>
+              <select value={editing.sessionId || ''} onChange={e => setEditing({...editing, sessionId: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">No Session Assigned</option>
+                {sessions.map(s => <option key={s.id} value={s.id}>{s.topic} ({s.date})</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">URL / Link</label>
+              <input required type="text" value={editing.url || ''} onChange={e => setEditing({...editing, url: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visibility</label>
+              <select value={editing.visibility || 'Students'} onChange={e => setEditing({...editing, visibility: e.target.value as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Students">Visible to Students</option>
+                <option value="Hidden">Hidden</option>
+              </select>
+            </div>
+            <div className="flex items-center mt-6">
+              <input type="checkbox" id="dl-allowed" checked={editing.downloadAllowed ?? true} onChange={e => setEditing({...editing, downloadAllowed: e.target.checked})} className="mr-2" />
+              <label htmlFor="dl-allowed" className="text-sm text-slate-700">Allow Download</label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Material</button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y divide-slate-100 bg-white rounded-xl border shadow-sm">
+        {materials.map(mat => (
+          <div key={mat.id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center shrink-0 mt-1">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800">{mat.title}</h4>
+                {mat.description && <p className="text-sm text-slate-600 mt-0.5">{mat.description}</p>}
+                <div className="flex items-center gap-3 mt-1.5 text-xs font-medium text-slate-500">
+                  <span className="px-2 py-0.5 bg-slate-100 rounded-md">{mat.type}</span>
+                  <span>{mat.uploadDate}</span>
+                  {mat.visibility === 'Hidden' && <span className="text-red-500 bg-red-50 px-2 py-0.5 rounded-md">Hidden</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <a href={mat.url} target="_blank" rel="noreferrer" className="px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg">View</a>
+              <button onClick={() => setEditing(mat)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+              <button onClick={() => MockDB.deleteItem('studyMaterials', mat.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
+        {materials.length === 0 && !editing && (
+          <div className="text-slate-500 p-12 text-center flex flex-col items-center">
+            <FileText className="w-12 h-12 text-slate-300 mb-3" />
+            <h3 className="font-bold text-slate-700">No Study Materials</h3>
+            <p className="text-sm mt-1 max-w-sm">Upload materials from your device or add external links to share with students.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function AssignmentsTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const assignments = db.assignments?.filter(a => a.batchId === batchId) || [];
+  const [editing, setEditing] = useState<Partial<import('../../types').Assignment> | null>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editing) {
+      if (editing.id) {
+        MockDB.updateItem('assignments', editing.id, editing);
+      } else {
+        MockDB.addItem('assignments', { ...editing, batchId, status: editing.status || 'Active' });
+      }
+      setEditing(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-slate-800">Assignments</h3>
+        <button 
+          onClick={() => setEditing({ title: '', description: '', dueDate: new Date().toISOString().split('T')[0], marks: 100, status: 'Active' })}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Add Assignment
+        </button>
+      </div>
+
+      {editing && (
+        <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+              <textarea required rows={3} value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Due Date</label>
+              <input required type="date" value={editing.dueDate || ''} onChange={e => setEditing({...editing, dueDate: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Marks</label>
+              <input required type="number" value={editing.marks || ''} onChange={e => setEditing({...editing, marks: parseInt(e.target.value) as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Assignment</button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y divide-slate-100">
+        {assignments.map(a => (
+          <div key={a.id} className="py-4 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800">{a.title}</h4>
+                <p className="text-xs text-slate-500">Due: {a.dueDate} ΓÇó Marks: {a.marks}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${a.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'}`}>{a.status}</span>
+              <button onClick={() => setEditing(a)} className="text-sm text-indigo-600 font-semibold hover:underline">Edit</button>
+              <button onClick={() => MockDB.deleteItem('assignments', a.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          </div>
+        ))}
+        {assignments.length === 0 && !editing && <div className="text-slate-500 py-8 text-center">No assignments added.</div>}
+      </div>
+    </div>
+  );
+}
+
+
+function StudentsTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const { userRole } = useAuth();
+  const isMentor = userRole === 'mentor';
+  const batch = db.batches.find(b => b.id === batchId);
+  const enrolledStudents = db.students.filter(s => batch?.studentIds?.includes(s.id));
+  const availableStudents = db.students.filter(s => !batch?.studentIds?.includes(s.id));
+
+  const addStudent = (studentId: string) => {
+    const updatedBatch = { ...batch, studentIds: [...(batch?.studentIds || []), studentId], students: (batch?.students || 0) + 1 };
+    MockDB.updateItem('batches', batchId, updatedBatch);
+    MockDB.updateItem('students', studentId, { batch: batch?.name, course: batch?.course });
+  };
+
+  const removeStudent = (studentId: string) => {
+    const updatedBatch = { ...batch, studentIds: batch?.studentIds?.filter((id: string) => id !== studentId), students: (batch?.students || 1) - 1 };
+    MockDB.updateItem('batches', batchId, updatedBatch);
+    MockDB.updateItem('students', studentId, { batch: '', course: '' });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <h3 className="text-lg font-bold text-slate-800">Enrolled Students ({enrolledStudents.length}/{batch?.maxStudents || 50})</h3>
+        {!isMentor && (
+          <select onChange={(e) => { if(e.target.value) addStudent(e.target.value); e.target.value=''; }} className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 max-w-xs w-full">
+            <option value="">+ Assign Student</option>
+            {availableStudents.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+          </select>
+        )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
+              {!isMentor && <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {enrolledStudents.map(s => (
+              <tr key={s.id} className="hover:bg-slate-50">
+                <td className="px-4 py-3">
+                  <p className="font-bold text-slate-800 text-sm">{s.name}</p>
+                  <p className="text-xs text-slate-500">{s.status}</p>
+                </td>
+                <td className="px-4 py-3 text-sm text-slate-600">{s.email}</td>
+                {!isMentor && (
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => removeStudent(s.id)} className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded">Remove</button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {enrolledStudents.length === 0 && (
+              <tr><td colSpan={isMentor ? 2 : 3} className="text-center py-8 text-slate-500">No students assigned to this batch.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+
+function RecordingsTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const recordings = db.recordings?.filter(r => r.batchId === batchId) || [];
+  const [editing, setEditing] = useState<Partial<import('../../types').Recording> | null>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editing) {
+      if (editing.id) {
+        MockDB.updateItem('recordings', editing.id, editing);
+      } else {
+        const batch = db.batches.find(b => b.id === batchId);
+        MockDB.addItem('recordings', { 
+          ...editing, 
+          batchId, 
+          courseName: batch?.course || '',
+          uploadDate: new Date().toISOString().split('T')[0],
+          visibility: editing.visibility || 'Students',
+          thumbnail: editing.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+        });
+      }
+      setEditing(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-slate-800">Recorded Classes</h3>
+        <button 
+          onClick={() => setEditing({ title: '', source: 'Google Drive', videoUrl: '', visibility: 'Students', date: new Date().toISOString().split('T')[0] })}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Upload Recording
+        </button>
+      </div>
+
+      {editing && (
+        <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
+              <textarea value={editing.description || ''} onChange={e => setEditing({...editing, description: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows={2} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recording Date</label>
+              <input required type="date" value={editing.date || ''} onChange={e => setEditing({...editing, date: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Duration (e.g. 1h 30m)</label>
+              <input type="text" value={editing.duration || ''} onChange={e => setEditing({...editing, duration: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Source</label>
+              <select value={editing.source || 'Google Drive'} onChange={e => setEditing({...editing, source: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Google Drive">Google Drive</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Teams">Teams</option>
+                <option value="OneDrive">OneDrive</option>
+                <option value="Direct Upload">Upload Video</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visibility</label>
+              <select value={editing.visibility || 'Students'} onChange={e => setEditing({...editing, visibility: e.target.value as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="Students">Visible to Students</option>
+                <option value="Hidden">Hidden</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Link / Video URL</label>
+              <input required type="text" value={editing.videoUrl || ''} onChange={e => setEditing({...editing, videoUrl: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Recording</button>
+          </div>
+        </form>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {recordings.map(rec => (
+          <div key={rec.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+            <div className="h-32 bg-slate-100 relative">
+              <img src={rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <a href={rec.videoUrl} target="_blank" rel="noreferrer" className="bg-white/90 text-slate-900 p-3 rounded-full hover:scale-110 transition-transform">
+                  <PlayCircle className="w-6 h-6" />
+                </a>
+              </div>
+              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded">
+                {rec.duration || '--:--'}
+              </div>
+              {rec.visibility === 'Hidden' && (
+                <div className="absolute top-2 right-2 bg-red-500/90 text-white text-[10px] font-bold px-2 py-1 rounded">
+                  Hidden
+                </div>
+              )}
+            </div>
+            <div className="p-4 flex-1 flex flex-col">
+              <h4 className="font-bold text-slate-800 line-clamp-1">{rec.title}</h4>
+              {rec.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{rec.description}</p>}
+              
+              <div className="mt-auto pt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                  <span className="px-2 py-0.5 bg-slate-100 rounded-md">{rec.source || 'Video'}</span>
+                  <span>{rec.date}</span>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => setEditing(rec)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => MockDB.deleteItem('recordings', rec.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {recordings.length === 0 && !editing && (
+        <div className="text-slate-500 p-12 text-center bg-white rounded-xl border border-slate-200 flex flex-col items-center">
+          <PlayCircle className="w-12 h-12 text-slate-300 mb-3" />
+          <h3 className="font-bold text-slate-700">No Recordings</h3>
+          <p className="text-sm mt-1 max-w-sm">Upload class recordings or link to external videos.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+function NotificationsTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const notifications = db.notifications?.filter(n => n.target === 'Batch' && n.targetId === batchId) || [];
+  const [editing, setEditing] = useState<Partial<import('../../types').Notification> | null>(null);
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editing) {
+      if (editing.id) {
+        MockDB.updateItem('notifications', editing.id, editing);
+      } else {
+        MockDB.addItem('notifications', { ...editing, target: 'Batch', targetId: batchId, date: new Date().toISOString().split('T')[0] });
+      }
+      setEditing(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-bold text-slate-800">Batch Notifications</h3>
+        <button 
+          onClick={() => setEditing({ title: '', message: '', type: 'info' })}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" /> Send Notification
+        </button>
+      </div>
+
+      {editing && (
+        <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type</label>
+              <select value={editing.type || 'info'} onChange={e => setEditing({...editing, type: e.target.value as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="info">Info</option>
+                <option value="alert">Alert</option>
+                <option value="success">Success</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message</label>
+              <textarea required rows={3} value={editing.message || ''} onChange={e => setEditing({...editing, message: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Send</button>
+          </div>
+        </form>
+      )}
+
+      <div className="divide-y divide-slate-100">
+        {notifications.map(n => (
+          <div key={n.id} className="py-4 flex justify-between items-start">
+            <div>
+              <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${n.type === 'alert' ? 'bg-red-500' : n.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                {n.title}
+              </h4>
+              <p className="text-sm text-slate-600 mt-1">{n.message}</p>
+              <p className="text-xs text-slate-500 mt-2">{n.date}</p>
+            </div>
+            <button onClick={() => MockDB.deleteItem('notifications', n.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
+          </div>
+        ))}
+        {notifications.length === 0 && !editing && <div className="text-slate-500 py-8 text-center">No notifications sent to this batch.</div>}
+      </div>
+    </div>
+  );
+}
+
+
+
+
+function DoubtSupportTab({ batchId }: { batchId: string }) {
+  const db = useDB();
+  const doubts = db.doubts?.filter(d => d.batchId === batchId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const [selectedDoubt, setSelectedDoubt] = useState<any>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const handleReplySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim() || !selectedDoubt) return;
+
+    MockDB.updateItem('doubts', selectedDoubt.id, {
+      ...selectedDoubt,
+      replies: [...(selectedDoubt.replies || []), { text: replyText, author: 'Admin', date: new Date().toISOString() }],
+      status: 'Answered'
+    });
+    
+    setReplyText('');
+    const currentDB = MockDB.get();
+    setSelectedDoubt(currentDB.doubts.find((d: any) => d.id === selectedDoubt.id));
+  };
+
+  const handleUpdateStatus = (id: string, status: string) => {
+    MockDB.updateItem('doubts', id, { status });
+    if (selectedDoubt?.id === id) {
+      setSelectedDoubt({ ...selectedDoubt, status });
+    }
+  };
+
+  if (!selectedDoubt) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold text-slate-800">Doubt Support</h3>
+        </div>
+        
+        <div className="divide-y divide-slate-100 bg-white rounded-xl border shadow-sm">
+          {doubts.map(d => (
+            <div key={d.id} className="p-4 hover:bg-slate-50 transition-colors">
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-bold text-slate-800">{d.title || d.subject}</h4>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
+                  d.status === 'Pending' ? 'bg-orange-50 text-orange-600' : 
+                  d.status === 'Answered' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+                }`}>{d.status}</span>
+              </div>
+              <p className="text-sm text-slate-600 mb-2 line-clamp-2">{d.description || d.question}</p>
+              <p className="text-xs text-slate-500">Student: {d.studentName || d.student} ΓÇó Date: {d.date}</p>
+              <div className="mt-4 flex justify-end">
+                <button onClick={() => setSelectedDoubt(d)} className="text-sm font-semibold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">View & Reply</button>
+              </div>
+            </div>
+          ))}
+          {doubts.length === 0 && <div className="text-slate-500 py-8 text-center">No doubts reported for this batch.</div>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-[600px] bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedDoubt(null)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h3 className="font-bold text-slate-800">{selectedDoubt.studentName || selectedDoubt.student}</h3>
+          </div>
+        </div>
+        <select 
+          value={selectedDoubt.status}
+          onChange={e => handleUpdateStatus(selectedDoubt.id, e.target.value)}
+          className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none"
+        >
+          <option value="Pending">Mark Pending</option>
+          <option value="Answered">Mark Answered</option>
+          <option value="Closed">Mark Closed</option>
+        </select>
+      </div>
+
+      <div className="p-6 border-b border-slate-100 shrink-0">
+        <h3 className="font-bold text-lg text-slate-800 mb-3">{selectedDoubt.title || selectedDoubt.subject}</h3>
+        <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap">
+          {selectedDoubt.description || selectedDoubt.question}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
+         {selectedDoubt.replies?.map((reply: any, idx: number) => (
+            <div key={idx} className={`flex ${reply.author === 'Admin' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] p-3 rounded-2xl ${reply.author === 'Admin' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
+                <span className="text-[10px] font-bold opacity-80 block mb-1">{reply.author}</span>
+                <p className="text-sm whitespace-pre-wrap">{reply.text}</p>
+              </div>
+            </div>
+         ))}
+      </div>
+
+      <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+        <form onSubmit={handleReplySubmit} className="flex gap-2">
+          <input 
+            type="text" 
+            value={replyText}
+            onChange={e => setReplyText(e.target.value)}
+            placeholder="Type your reply..." 
+            className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center justify-center">
+            <Send className="w-4 h-4 mr-2" /> Send
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+
 export default function BatchDashboard() {
   const { batchId } = useParams();
   const db = useDB();
