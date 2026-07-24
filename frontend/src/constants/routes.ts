@@ -30,7 +30,6 @@ export const ROUTES = {
   STUDENT_COMPLETE_PROFILE: '/student/complete-profile',
   STUDENT_COURSES: '/student/courses',
   STUDENT_BATCH: '/student/batch/:batchId',
-  STUDENT_LIVE_CLASSES: '/student/live-classes',
   STUDENT_RECORDINGS: '/student/recordings',
   STUDENT_MATERIALS: '/student/materials',
   STUDENT_DOUBTS: '/student/doubts',

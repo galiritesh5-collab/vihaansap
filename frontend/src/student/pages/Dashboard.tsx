@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const stats = [
     { name: 'Total Enrolled Courses', value: myBatches.length, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { name: 'Upcoming Live Classes', value: upcomingSessions.length, icon: MonitorPlay, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { name: "Today's Sessions", value: upcomingSessions.length, icon: MonitorPlay, color: 'text-orange-500', bg: 'bg-orange-50' },
     { name: 'Unread Notifications', value: studentNotifs.length, icon: Bell, color: 'text-purple-600', bg: 'bg-purple-50' },
     { name: 'Pending Doubts', value: myDoubts.filter(d => d.status === 'Pending').length, icon: HelpCircle, color: 'text-red-500', bg: 'bg-red-50' },
   ];
@@ -142,8 +142,8 @@ export default function Dashboard() {
           {/* Upcoming Live Class */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-lg">Upcoming Live Sessions</h3>
-              <Link to="/student/live-classes" className="text-sm font-semibold text-[#1763B6] hover:underline">View Schedule</Link>
+              <h3 className="font-bold text-slate-800 text-lg">Today's Sessions</h3>
+              <Link to="/student/courses" className="text-sm font-semibold text-[#1763B6] hover:underline">Open Workspace</Link>
             </div>
             <div className="p-4 sm:p-6">
               {upcomingSessions.length > 0 ? upcomingSessions.slice(0, 2).map(cls => {

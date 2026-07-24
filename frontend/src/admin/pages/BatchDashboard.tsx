@@ -5,23 +5,24 @@ import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, Message
 import { MockDB } from '../../services/MockDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { BatchPlannerWeek, BatchSession, StudyMaterial, CourseRating, SessionFeedback } from '../../types';
-import { storage } from '../../config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { enrolledStudentsForBatch } from '../../utils/recipientTargeting';
 
 function TodaySessionTab({ batchId }: { batchId: string }) {
   const db = useDB();
-  const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
-  const todaySession = sessions.find(s => s.status === 'Live') || sessions.find(s => s.status === 'Upcoming');
-  const [editing, setEditing] = useState<Partial<BatchSession> | null>(null);
+  const batch = db.batches?.find(b => b.id === batchId);
+  const students = enrolledStudentsForBatch(batch, db.students || []);
+  const sessions = (db.batchSessions?.filter(s => s.batchId === batchId) || [])
+    .sort((a, b) => new Date(b.sessionDateTime || b.createdAt || 0).getTime() - new Date(a.sessionDateTime || a.createdAt || 0).getTime());
+  const [editing, setEditing] = useState<any | null>(null);
+  const [recipientType, setRecipientType] = useState<'all' | 'selected'>('all');
+  const [recipientIds, setRecipientIds] = useState<string[]>([]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
-      if (editing.id) {
-        MockDB.updateItem('batchSessions', editing.id, editing);
-      } else {
-        MockDB.addItem('batchSessions', { ...editing, batchId });
-      }
+      const payload = { ...editing, batchId, recipientType, recipientIds: recipientType === 'all' ? [] : recipientIds, createdAt: editing.createdAt || new Date().toISOString() };
+      if (editing.id) MockDB.updateItem('batchSessions', editing.id, payload);
+      else MockDB.addItem('batchSessions', payload);
       setEditing(null);
     }
   };
@@ -31,7 +32,7 @@ function TodaySessionTab({ batchId }: { batchId: string }) {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-800">Today's Session</h3>
         <button 
-          onClick={() => setEditing({ topic: '', date: new Date().toISOString().split('T')[0], time: '10:00 AM', status: 'Upcoming', visibleFrom: '', visibleUntil: '' })}
+          onClick={() => { setEditing({ title: '', platform: 'Google Meet', meetingLink: '', sessionDateTime: '' }); setRecipientType('all'); setRecipientIds([]); }}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Create Session
@@ -40,94 +41,38 @@ function TodaySessionTab({ batchId }: { batchId: string }) {
 
       {editing ? (
         <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Topic</label>
-              <input required type="text" value={editing.topic || ''} onChange={e => setEditing({...editing, topic: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Title *</label>
+              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
-              <select value={editing.status || 'Upcoming'} onChange={e => setEditing({...editing, status: e.target.value as any})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="Upcoming">Upcoming</option>
-                <option value="Live">Live</option>
-                <option value="Completed">Completed</option>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform *</label>
+              <select required value={editing.platform || ''} onChange={e => setEditing({...editing, platform: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option>Google Meet</option><option>Microsoft Teams</option><option>Zoom</option><option>Webex</option><option>Other</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label>
-              <input required type="date" value={editing.date || ''} onChange={e => setEditing({...editing, date: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Meeting Link *</label>
+              <input required type="url" value={editing.meetingLink || ''} onChange={e => setEditing({...editing, meetingLink: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Time</label>
-              <input required type="time" value={editing.time || ''} onChange={e => setEditing({...editing, time: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date & Time *</label>
+              <input required type="datetime-local" value={editing.sessionDateTime || ''} onChange={e => setEditing({...editing, sessionDateTime: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Meeting Link (e.g. Teams, Zoom)</label>
-              <input type="url" value={editing.meetingLink || ''} onChange={e => setEditing({...editing, meetingLink: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-            {editing.status === 'Completed' && (
-              <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recording URL</label>
-                <input type="url" value={editing.recordingUrl || ''} onChange={e => setEditing({...editing, recordingUrl: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            )}
-            <div className="col-span-1">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visible From (Optional)</label>
-              <input type="datetime-local" value={editing.visibleFrom || ''} onChange={e => setEditing({...editing, visibleFrom: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-            <div className="col-span-1">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visible Until (Optional)</label>
-              <input type="datetime-local" value={editing.visibleUntil || ''} onChange={e => setEditing({...editing, visibleUntil: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Visibility</label>
+              <label className="mr-5 text-sm"><input type="radio" checked={recipientType === 'all'} onChange={() => setRecipientType('all')} /> All Students in Batch</label>
+              <label className="text-sm"><input type="radio" checked={recipientType === 'selected'} onChange={() => setRecipientType('selected')} /> Selected Students</label>
+              {recipientType === 'selected' && <div className="mt-3 max-h-40 overflow-auto rounded-lg border bg-white p-3 space-y-2">{students.map(s => <label key={s.id} className="block text-sm"><input type="checkbox" checked={recipientIds.includes(s.id)} onChange={() => setRecipientIds(ids => ids.includes(s.id) ? ids.filter(id => id !== s.id) : [...ids, s.id])} /> {s.name || s.email}</label>)}</div>}
             </div>
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Session</button>
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Publish Session</button>
           </div>
         </form>
-      ) : todaySession ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                todaySession.status === 'Live' ? 'bg-red-50 text-red-600' : 
-                todaySession.status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
-              }`}>
-                {todaySession.status}
-              </span>
-              <span className="text-sm font-semibold text-slate-500">{todaySession.date} at {todaySession.time}</span>
-            </div>
-            <h4 className="text-xl font-bold text-slate-800">{todaySession.topic}</h4>
-            {todaySession.meetingLink && (
-              <a href={todaySession.meetingLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-4 text-[#1763B6] hover:text-[#145096] font-semibold text-sm">
-                <Video className="w-4 h-4" /> Join Meeting Link
-              </a>
-            )}
-          </div>
-          <button onClick={() => setEditing(todaySession)} className="px-4 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors">
-            Edit Session
-          </button>
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
-          No active or upcoming sessions for today. Click "Create Session" to add one.
-        </div>
-      )}
-
-      <div>
-        <h4 className="font-bold text-slate-800 mb-4">Past Sessions</h4>
-        <div className="space-y-2">
-          {sessions.filter(s => s.status === 'Completed').map(s => (
-            <div key={s.id} className="p-4 bg-white border border-slate-100 rounded-lg flex justify-between items-center hover:shadow-sm transition-shadow">
-              <div>
-                <p className="font-bold text-slate-800">{s.topic}</p>
-                <p className="text-xs text-slate-500">{s.date}</p>
-              </div>
-              <button onClick={() => setEditing(s)} className="text-sm text-indigo-600 font-semibold hover:underline">Edit</button>
-            </div>
-          ))}
-        </div>
-      </div>
+      ) : <div className="divide-y rounded-xl border bg-white">{sessions.map(s => <div key={s.id} className="p-4 flex justify-between"><div><p className="font-bold">{s.title || s.topic}</p><p className="text-sm text-slate-500">{s.platform || 'Meeting'} · {s.sessionDateTime ? new Date(s.sessionDateTime).toLocaleString() : `${s.date || ''} ${s.time || ''}`}</p></div><button onClick={() => { setEditing(s); setRecipientType(s.recipientType || s.recipientMode || 'all'); setRecipientIds(s.recipientIds || []); }} className="text-indigo-600 font-semibold text-sm">Edit</button></div>)}{sessions.length === 0 && <div className="p-10 text-center text-slate-500">No sessions published.</div>}</div>}
     </div>
   );
 }
@@ -740,9 +685,12 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
       title: "Course Feedback Requested",
       message: "Your batch has requested course feedback. Please share your rating and review.",
       date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
       type: 'info',
       target: 'Batch',
       targetId: batchId,
+      recipientType: 'all',
+      recipientIds: [],
       isFeedbackRequest: true
     });
     alert("Review request sent to all students in this batch.");
@@ -853,6 +801,7 @@ function LiveClassesTab({ batchId }: { batchId: string }) {
     const item = {
       ...editing,
       batchId,
+      recipientType: recipientMode,
       recipientMode,
       recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
       createdAt: new Date().toISOString(),
@@ -968,8 +917,6 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
   const materials = (db.studyMaterials?.filter(m => m.batchId === batchId) || [])
     .sort((a, b) => new Date(b.uploadDate || b.createdAt || 0).getTime() - new Date(a.uploadDate || a.createdAt || 0).getTime());
   const [editing, setEditing] = useState<Partial<any> | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState('');
   const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
@@ -982,6 +929,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
     if (editing) {
       const matData = {
         ...editing,
+        recipientType: recipientMode,
         recipientMode,
         recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
         createdAt: editing.createdAt || new Date().toISOString(),
@@ -1002,46 +950,8 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadProgress(`Uploading ${file.name}...`);
-    try {
-      const storageRef = ref(storage, `study_materials/${batchId}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
-
-      let fileExt = file.name.split('.').pop()?.toUpperCase() || 'PDF';
-      if (['PPTX'].includes(fileExt)) fileExt = 'PPTX';
-      else if (['DOCX'].includes(fileExt)) fileExt = 'DOCX';
-      else if (['XLS', 'XLSX', 'CSV'].includes(fileExt)) fileExt = 'Excel';
-      else if (['PNG', 'JPG', 'JPEG', 'GIF'].includes(fileExt)) fileExt = 'Images';
-      else if (['ZIP', 'RAR'].includes(fileExt)) fileExt = 'ZIP';
-
-      setEditing(prev => ({
-        ...prev,
-        title: prev?.title || file.name.replace(/\.[^/.]+$/, ''),
-        type: fileExt,
-        url: downloadUrl,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type
-      }));
-      setUploadProgress('Upload complete!');
-      setTimeout(() => setUploadProgress(''), 2000);
-    } catch (err) {
-      console.error('File upload failed', err);
-      alert('File upload failed. Ensure Firebase Storage is properly configured.');
-      setUploadProgress('');
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const openNew = () => {
-    setEditing({ title: '', description: '', visibility: 'Students', downloadAllowed: true });
+    setEditing({ title: '', platform: 'Google Drive', url: '', visibility: 'Students' });
     setRecipientMode('all');
     setSelectedStudentIds([]);
   };
@@ -1054,7 +964,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
           onClick={openNew}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Add Document
+          <Plus className="w-4 h-4" /> Add Study Material
         </button>
       </div>
 
@@ -1066,30 +976,19 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
               <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Chapter 1 Notes" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Document File</label>
-              <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-100 transition-colors">
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                />
-                <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-600">
-                  {uploading ? uploadProgress : (editing.fileName ? `✓ ${editing.fileName} (Click to replace)` : 'Click or drag file to upload')}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">PDF, DOCX, PPTX, XLSX, images, etc.</p>
-              </div>
-              {editing.url && !uploading && (
-                <p className="text-xs text-green-600 font-bold mt-2 flex items-center gap-1"><CheckSquare className="w-3 h-3"/> File uploaded and ready to save</p>
-              )}
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Platform *</label>
+              <select required value={editing.platform || ''} onChange={e => setEditing({...editing, platform: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg"><option>Google Drive</option><option>Google Docs</option><option>Google Sheets</option><option>OneDrive</option><option>YouTube</option><option>Website</option><option>Other</option></select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Link *</label>
+              <input required type="url" value={editing.url || ''} onChange={e => setEditing({...editing, url: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg" placeholder="https://..." />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
-                  <span className="text-sm font-semibold text-slate-700">All Students</span>
+                  <span className="text-sm font-semibold text-slate-700">All Students in Batch</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" checked={recipientMode === 'selected'} onChange={() => setRecipientMode('selected')} />
@@ -1111,8 +1010,8 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-            <button type="submit" disabled={uploading || !editing.url} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-              {uploading ? 'Uploading...' : 'Save Document'}
+            <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">
+              Publish Material
             </button>
           </div>
         </form>
@@ -1123,7 +1022,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Document Details</th>
-              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">File</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Platform</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Recipients</th>
               <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -1143,8 +1042,8 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
                   </div>
                 </td>
                 <td className="px-4 py-4">
-                  <p className="text-sm font-semibold text-slate-700">{mat.fileName || 'Legacy Link'}</p>
-                  <p className="text-xs text-slate-500">{mat.type} • {mat.uploadDate}</p>
+                  <p className="text-sm font-semibold text-slate-700">{mat.platform || mat.type || 'Legacy Link'}</p>
+                  <p className="text-xs text-slate-500">Published {mat.uploadDate || mat.createdAt}</p>
                 </td>
                 <td className="px-4 py-4 text-xs text-slate-500">
                   {mat.recipientMode === 'selected' ? `${(mat.recipientIds || []).length} students` : 'All'}
@@ -1340,6 +1239,7 @@ function RecordingsTab({ batchId }: { batchId: string }) {
       const recData = {
         ...editing,
         batchId,
+        recipientType: recipientMode,
         recipientMode,
         recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
       };
@@ -1522,6 +1422,7 @@ function NotificationsTab({ batchId }: { batchId: string }) {
         target: 'Batch',
         targetId: batchId,
         date: new Date().toISOString(),
+        recipientType: recipientMode,
         recipientMode,
         recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
       };
@@ -1755,7 +1656,6 @@ export default function BatchDashboard() {
     { name: 'Course Calendar', icon: Calendar },
     { name: 'Weekly Planner', icon: Calendar },
     { name: "Today's Session", icon: Video },
-    { name: 'Live Classes', icon: Video },
     { name: 'Study Materials', icon: FileText },
     { name: 'Recordings', icon: PlayCircle },
     { name: 'Notifications', icon: MessageSquare },
@@ -1796,7 +1696,6 @@ export default function BatchDashboard() {
         {activeTab === 'Course Calendar' && <CourseCalendarTab batchId={batchId as string} />}
         {activeTab === 'Weekly Planner' && <WeeklyPlannerTab batchId={batchId as string} />}
         {activeTab === 'Study Materials' && <StudyMaterialsTab batchId={batchId as string} />}
-        {activeTab === 'Live Classes' && <LiveClassesTab batchId={batchId as string} />}
         {activeTab === 'Students' && <StudentsTab batchId={batchId as string} />}
         {activeTab === 'Recordings' && <RecordingsTab batchId={batchId as string} />}
         {activeTab === 'Notifications' && <NotificationsTab batchId={batchId as string} />}

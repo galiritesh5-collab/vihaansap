@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { Bell, Info, AlertCircle, CheckCircle } from 'lucide-react';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 export default function Notifications() {
   const { studentProfile } = useAuth();
@@ -12,7 +13,7 @@ export default function Notifications() {
   const notifications = db.notifications?.filter(n => {
     if (n.target === 'Everyone') return true;
     if (n.target === 'Students') return true;
-    if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return true;
+    if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return isTargetedToStudent(n, studentProfile);
     if (n.target === 'Course' && myBatches.some(b => b.course === n.targetId)) return true; // assuming n.targetId holds course name or ID
     if (n.target === 'Specific Student' && n.targetId === studentProfile?.id) return true;
     return false;

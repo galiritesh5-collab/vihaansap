@@ -82,7 +82,7 @@ exports.createDocument = async (req, res, next) => {
     }
     if (!db) return res.status(500).json({ success: false, error: 'Firestore not initialized' });
 
-    const newItem = { ...req.body };
+    const newItem = { ...req.body, createdAt: req.body.createdAt || new Date().toISOString() };
     const docId = newItem.id || newItem.uid || uuidv4();
     newItem.id = docId; // ensure id is set
     

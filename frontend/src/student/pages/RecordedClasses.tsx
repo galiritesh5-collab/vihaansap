@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { PlayCircle, Calendar } from 'lucide-react';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 export default function RecordedClasses() {
   const { studentProfile } = useAuth();
@@ -21,7 +22,7 @@ export default function RecordedClasses() {
 
   // 2. Standalone uploaded recordings
   const standaloneRecordings = db.recordings?.filter(r => 
-    myBatches.some(b => b.id === r.batchId) && r.visibility !== 'Hidden'
+    myBatches.some(b => b.id === r.batchId) && r.visibility !== 'Hidden' && isTargetedToStudent(r, studentProfile)
   ).map(r => ({
     id: r.id,
     topic: r.title,

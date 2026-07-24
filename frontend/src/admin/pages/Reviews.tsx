@@ -14,7 +14,7 @@ export default function Reviews() {
     const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
     const matchesBatch = batchFilter === 'All' || r.batchId === batchFilter;
     return matchesStatus && matchesBatch;
-  }) || [];
+  }).sort((a: any, b: any) => new Date(b.submittedAt || b.createdAt || b.date || 0).getTime() - new Date(a.submittedAt || a.createdAt || a.date || 0).getTime()) || [];
   
   // Extract unique batches for the filter dropdown
   const uniqueBatches = Array.from(new Set(db.reviews?.map((r: any) => r.batchId).filter(Boolean)));

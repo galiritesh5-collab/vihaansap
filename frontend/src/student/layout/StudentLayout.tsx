@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { useBrandingConfig } from '../../hooks/useBrandingConfig';
 import CourseRatingModal from '../pages/CourseRatingModal';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 // ─── Dynamic student status helper ─────────────────────────────────────────
 function useStudentStatus(userId: string | undefined, studentProfileId: string | undefined) {
@@ -66,7 +67,7 @@ export default function StudentLayout() {
 
   const notifications = db.notifications?.filter(n => {
     if (n.target === 'Everyone' || n.target === 'Students') return true;
-    if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return true;
+    if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return isTargetedToStudent(n, studentProfile);
     if (n.target === 'Course' && myBatches.some(b => b.course === n.targetId)) return true;
     if (n.target === 'Specific Student' && n.targetId === studentProfile?.id) return true;
     return false;

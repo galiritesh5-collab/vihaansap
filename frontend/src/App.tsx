@@ -30,7 +30,6 @@ import CompleteProfile from './student/pages/CompleteProfile';
 import StudentLayout from './student/layout/StudentLayout';
 import Dashboard from './student/pages/Dashboard';
 import MyCourses from './student/pages/MyCourses';
-import LiveClasses from './student/pages/LiveClasses';
 import RecordedClasses from './student/pages/RecordedClasses';
 import StudyMaterials from './student/pages/StudyMaterials';
 import BatchWorkspace from './student/pages/BatchWorkspace';
@@ -165,7 +164,6 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="courses" element={<MyCourses />} />
           <Route path="batch/:batchId" element={<BatchWorkspace />} />
-          <Route path="live-classes" element={<LiveClasses />} />
           <Route path="recordings" element={<RecordedClasses />} />
           <Route path="materials" element={<StudyMaterials />} />
           <Route path="doubts" element={<DoubtSupport />} />

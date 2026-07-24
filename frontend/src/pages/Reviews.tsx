@@ -6,7 +6,7 @@ import { Star } from 'lucide-react';
 
 export default function Reviews() {
   const db = useDB();
-  const approvedReviews = db.reviews.filter(r => r.status === 'Approved');
+  const approvedReviews = db.reviews.filter(r => String(r.status).toLowerCase() === 'approved');
   const averageRating = approvedReviews.length > 0 ? approvedReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / approvedReviews.length : 0;
 
   return (
