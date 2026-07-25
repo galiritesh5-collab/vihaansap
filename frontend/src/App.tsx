@@ -38,6 +38,7 @@ import Notifications from './student/pages/Notifications';
 import MoreCourses from './student/pages/MoreCourses';
 import Calendar from './student/pages/Calendar';
 import WeeklyPlanner from './student/pages/WeeklyPlanner';
+import TodaysSession from './student/pages/TodaysSession';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Admin Portal
@@ -170,6 +171,7 @@ export default function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="weekly-planner" element={<WeeklyPlanner />} />
+          <Route path="todays-session" element={<TodaysSession />} />
           <Route path="more-courses" element={<MoreCourses />} />
         </Route>
         {/* Admin Portal Routes */}

@@ -3,14 +3,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { FileText, Download, ExternalLink, Calendar } from 'lucide-react';
 import { downloadFile } from '../../utils/downloadFile';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 export default function StudyMaterials() {
   const { studentProfile } = useAuth();
   const db = useDB();
 
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
+  const { activeBatch } = useActiveBatch();
   const studyMaterials = db.studyMaterials?.filter(m => 
-    myBatches.some(b => b.id === m.batchId) && m.visibility !== 'Hidden'
+    m.batchId === activeBatch?.id && m.visibility !== 'Hidden' && isTargetedToStudent(m, studentProfile)
   ).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()) || [];
 
   return (
@@ -23,7 +25,7 @@ export default function StudyMaterials() {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         {studyMaterials.length === 0 ? (
           <div className="p-8 text-center text-slate-500">
-            No study materials have been uploaded yet.
+            {activeBatch ? 'No study materials have been uploaded for this batch yet.' : 'No active batch assigned yet.'}
           </div>
         ) : (
           <div className="divide-y divide-slate-100">

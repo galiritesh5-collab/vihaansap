@@ -3,13 +3,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { HelpCircle, Plus, X, Send, Paperclip } from 'lucide-react';
 import { MockDB } from '../../services/MockDB';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function DoubtSupport() {
   const { studentProfile } = useAuth();
   const db = useDB();
   
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
-  const myDoubts = db.doubts?.filter(d => d.studentId === studentProfile?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const { activeBatch, enrolledBatches } = useActiveBatch();
+  const myBatches = enrolledBatches;
+  const myDoubts = db.doubts?.filter(d => d.studentId === studentProfile?.id && d.batchId === activeBatch?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   
   const [selectedDoubt, setSelectedDoubt] = useState<any | null>(null);
   const [isAsking, setIsAsking] = useState(false);
@@ -25,7 +27,7 @@ export default function DoubtSupport() {
     const newDoubt = {
       studentId: studentProfile.id,
       studentName: studentProfile.name,
-      batchId,
+      batchId: batchId || activeBatch?.id,
       title,
       question: description,
       description,
@@ -34,7 +36,7 @@ export default function DoubtSupport() {
       replies: []
     };
     MockDB.addItem('doubts', newDoubt);
-    setBatchId('');
+    setBatchId(activeBatch?.id || '');
     setTitle('');
     setDescription('');
     setIsAsking(false);
@@ -71,7 +73,7 @@ export default function DoubtSupport() {
         {/* Left Column: Doubt List */}
         <div className="w-full md:w-1/3 flex flex-col gap-4 overflow-y-auto pr-2 pb-4">
           <button 
-            onClick={() => { setIsAsking(true); setSelectedDoubt(null); }}
+            onClick={() => { setIsAsking(true); setSelectedDoubt(null); setBatchId(activeBatch?.id || ''); }}
             className={`w-full text-left p-4 rounded-xl border-2 transition-colors flex items-center justify-between ${isAsking ? 'border-[#1763B6] bg-blue-50/50' : 'border-dashed border-slate-200 hover:border-[#1763B6] bg-white'}`}
           >
             <span className="font-bold text-[#1763B6]">Ask a New Question</span>
@@ -168,18 +170,8 @@ export default function DoubtSupport() {
               <div className="p-6 flex-1 overflow-y-auto">
                 <form onSubmit={handleSubmit} className="max-w-xl space-y-5">
                   <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Select Batch</label>
-                    <select 
-                      value={batchId}
-                      onChange={e => setBatchId(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1763B6]/20 focus:border-[#1763B6]"
-                      required
-                    >
-                      <option value="">Select Batch</option>
-                      {myBatches.map(b => (
-                        <option key={b.id} value={b.id}>{b.course} ({b.name})</option>
-                      ))}
-                    </select>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Active Batch</label>
+                    <div className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 text-slate-600">{activeBatch ? `${activeBatch.course} (${activeBatch.name})` : 'No active batch assigned yet'}</div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Topic</label>

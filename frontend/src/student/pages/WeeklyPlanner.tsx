@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { Calendar, ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function WeeklyPlanner() {
-  const { studentProfile } = useAuth();
   const db = useDB();
-
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
-  const allPlanners = db.batchPlanner?.filter(p => myBatches.some(b => b.id === p.batchId)).sort((a, b) => a.weekNumber - b.weekNumber) || [];
+  const { activeBatch } = useActiveBatch();
+  const allPlanners = db.batchPlanner?.filter(p => p.batchId === activeBatch?.id).sort((a, b) => a.weekNumber - b.weekNumber) || [];
 
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
 
@@ -23,13 +22,13 @@ export default function WeeklyPlanner() {
         <p className="text-slate-500 text-sm mt-1">Track your course progression week by week.</p>
       </div>
 
-      {myBatches.length === 0 ? (
+      {!activeBatch ? (
         <div className="p-8 text-center bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-500">
-          You are not enrolled in any batches currently.
+          No active batch assigned yet.
         </div>
       ) : (
         <div className="space-y-8">
-          {myBatches.map(batch => {
+          {[activeBatch].map(batch => {
             const course = db.courses.find(c => c.name === batch.course);
             const batchPlanner = allPlanners.filter(p => p.batchId === batch.id);
 

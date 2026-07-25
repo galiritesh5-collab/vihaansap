@@ -3,15 +3,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { PlayCircle, Calendar } from 'lucide-react';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function RecordedClasses() {
   const { studentProfile } = useAuth();
   const db = useDB();
 
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
+  const { activeBatch } = useActiveBatch();
   
   // 1. Recordings from completed sessions
-  const mySessions = db.batchSessions?.filter(s => myBatches.some(b => b.id === s.batchId)) || [];
+  const mySessions = db.batchSessions?.filter(s => s.batchId === activeBatch?.id && isTargetedToStudent(s, studentProfile)) || [];
   const sessionRecordings = mySessions.filter(s => s.status === 'Completed' && s.recordingUrl).map(s => ({
     id: s.id,
     topic: s.topic,
@@ -22,7 +23,7 @@ export default function RecordedClasses() {
 
   // 2. Standalone uploaded recordings
   const standaloneRecordings = db.recordings?.filter(r => 
-    myBatches.some(b => b.id === r.batchId) && r.visibility !== 'Hidden' && isTargetedToStudent(r, studentProfile)
+    r.batchId === activeBatch?.id && r.visibility !== 'Hidden' && isTargetedToStudent(r, studentProfile)
   ).map(r => ({
     id: r.id,
     topic: r.title,
@@ -43,7 +44,7 @@ export default function RecordedClasses() {
 
       {recordedSessions.length === 0 ? (
         <div className="p-8 text-center bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-500">
-          No recordings available yet.
+          {activeBatch ? 'No recordings available for this batch yet.' : 'No active batch assigned yet.'}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

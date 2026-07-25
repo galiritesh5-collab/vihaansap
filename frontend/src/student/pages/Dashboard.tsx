@@ -4,18 +4,24 @@ import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, C
 import { Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import SessionFeedbackModal from './SessionFeedbackModal';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 export default function Dashboard() {
   const { currentUser, studentProfile } = useAuth();
   const db = useDB();
   const [feedbackSession, setFeedbackSession] = useState<any>(null);
+  const { activeBatch, enrolledBatches } = useActiveBatch();
 
   // Find batches where this student is enrolled
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id) /* Fallback for mock */) || [];
+  const myBatches = enrolledBatches;
   
   // Find sessions for these batches
-  const mySessions = db.batchSessions?.filter(s => myBatches.some(b => b.id === s.batchId)) || [];
-  const upcomingSessions = mySessions.filter(s => s.status === 'Live' || s.status === 'Upcoming');
+  const mySessions = db.batchSessions?.filter(s => myBatches.some(b => b.id === s.batchId) && isTargetedToStudent(s, studentProfile)) || [];
+  const upcomingSessions = mySessions.filter(s => {
+    const scheduled = new Date(s.sessionDateTime || `${s.date || ''} ${s.time || ''}`).getTime();
+    return s.batchId === activeBatch?.id && (s.status === 'Live' || s.status === 'Upcoming') && Number.isFinite(scheduled) && Date.now() <= scheduled + 4 * 60 * 60 * 1000;
+  });
   const pastSessions = mySessions.filter(s => s.status === 'Completed');
 
   // Filter student notifications
@@ -77,7 +83,7 @@ export default function Dashboard() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-50 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
         <div className="relative z-10">
           <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-800 tracking-tight">
-            Welcome back, {currentUser?.displayName || currentUser?.email}! ðŸ‘‹
+            Welcome back, {currentUser?.displayName || currentUser?.email}!
           </h2>
           <p className="text-slate-500 mt-2 max-w-2xl text-sm sm:text-base">
             You have {upcomingSessions.length} upcoming classes today. Resume your recent courses to keep up your learning streak.
@@ -143,7 +149,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-lg">Today's Sessions</h3>
-              <Link to="/student/courses" className="text-sm font-semibold text-[#1763B6] hover:underline">Open Workspace</Link>
+              <Link to="/student/todays-session" className="text-sm font-semibold text-[#1763B6] hover:underline">Open Today's Session</Link>
             </div>
             <div className="p-4 sm:p-6">
               {upcomingSessions.length > 0 ? upcomingSessions.slice(0, 2).map(cls => {

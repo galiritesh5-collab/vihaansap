@@ -9,6 +9,7 @@ import { useDB } from '../../hooks/useDB';
 import { useBrandingConfig } from '../../hooks/useBrandingConfig';
 import CourseRatingModal from '../pages/CourseRatingModal';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
+import { ActiveBatchProvider, useActiveBatch } from '../contexts/ActiveBatchContext';
 
 // ─── Dynamic student status helper ─────────────────────────────────────────
 function useStudentStatus(userId: string | undefined, studentProfileId: string | undefined) {
@@ -39,6 +40,10 @@ function useStudentStatus(userId: string | undefined, studentProfileId: string |
 // ───────────────────────────────────────────────────────────────────────────
 
 export default function StudentLayout() {
+  return <ActiveBatchProvider><StudentLayoutContent /></ActiveBatchProvider>;
+}
+
+function StudentLayoutContent() {
   const { currentUser: user, loading, logout, studentProfile } = useAuth();
   const { config: brandingConfig } = useBrandingConfig();
   const location = useLocation();
@@ -46,6 +51,7 @@ export default function StudentLayout() {
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const status = useStudentStatus(user?.uid, studentProfile?.id);
+  const { activeBatch, enrolledBatches, setActiveBatchId } = useActiveBatch();
 
   if (loading) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>;
@@ -92,6 +98,7 @@ export default function StudentLayout() {
     { name: 'Dashboard',        path: '/student/dashboard',     icon: LayoutDashboard },
     { name: 'My Courses',       path: '/student/courses',        icon: BookOpen },
     { name: 'Weekly Planner',   path: '/student/weekly-planner', icon: Calendar },
+    { name: "Today's Session", path: '/student/todays-session', icon: MonitorPlay },
     { name: 'Recorded Classes', path: '/student/recordings',     icon: Video },
     { name: 'Study Materials',  path: '/student/materials',      icon: FileText },
     { name: 'Calendar',         path: '/student/calendar',       icon: Calendar },
@@ -189,6 +196,18 @@ export default function StudentLayout() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <label className="sr-only" htmlFor="active-batch">Current Batch</label>
+              <select
+                id="active-batch"
+                value={activeBatch?.id || ''}
+                onChange={event => setActiveBatchId(event.target.value)}
+                disabled={enrolledBatches.length === 0}
+                className="max-w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:text-slate-400"
+              >
+                {enrolledBatches.length === 0 ? <option value="">No active batch assigned yet</option> : enrolledBatches.map(batch => <option key={batch.id} value={batch.id}>{batch.course} — {batch.name}</option>)}
+              </select>
+            </div>
             {/* Name + Dynamic Status Badge */}
             <div className="hidden sm:flex items-center gap-3 text-right">
               <div>

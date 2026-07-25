@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { BookOpen, Star, Clock } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import CourseRatingModal from './CourseRatingModal';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function MyCourses() {
   const { studentProfile } = useAuth();
   const db = useDB();
   const [ratingBatch, setRatingBatch] = useState<any>(null);
+  const { setActiveBatchId, enrolledBatches } = useActiveBatch();
+  const navigate = useNavigate();
 
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
+  const myBatches = enrolledBatches;
 
   return (
     <div className="p-4 sm:p-8 space-y-6 max-w-6xl">
@@ -55,9 +58,9 @@ export default function MyCourses() {
                       <Star className="w-4 h-4" /> Rate Course
                     </button>
                   ) : (
-                    <Link to={`/student/batch/${batch.id}`} className="w-full py-2.5 bg-[#1763B6] text-white hover:bg-[#145096] rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 block text-center">
-                      Enter Batch Workspace
-                    </Link>
+                    <button onClick={() => { setActiveBatchId(batch.id); navigate('/student/dashboard'); }} className="w-full py-2.5 bg-[#1763B6] text-white hover:bg-[#145096] rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                      Switch to this Batch
+                    </button>
                   )}
                 </div>
               </div>

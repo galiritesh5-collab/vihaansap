@@ -2,20 +2,22 @@ import React from 'react';
 import { useDB } from '../../hooks/useDB';
 import { useAuth } from '../../contexts/AuthContext';
 import { Calendar as CalendarIcon, Clock, Video } from 'lucide-react';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
+import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
 export default function Calendar() {
   const db = useDB();
   const { studentProfile } = useAuth();
   
-  const myBatches = db.batches?.filter(b => b.studentIds?.includes(studentProfile?.id)) || [];
+  const { activeBatch } = useActiveBatch();
   
   const studentEvents = db.events?.filter(ev => 
     ev.target === 'Everyone' || ev.target === 'Students' || 
-    (ev.target === 'Batch' && myBatches.some(b => b.id === ev.targetId))
+    (ev.target === 'Batch' && ev.targetId === activeBatch?.id)
   ) || [];
 
   const batchSessions = db.batchSessions
-    ?.filter(s => myBatches.some(b => b.id === s.batchId))
+    ?.filter(s => s.batchId === activeBatch?.id && isTargetedToStudent(s, studentProfile))
     .map(s => {
        const batch = db.batches.find(b => b.id === s.batchId);
        return {
