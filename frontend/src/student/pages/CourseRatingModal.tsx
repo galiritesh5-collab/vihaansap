@@ -25,7 +25,10 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
     // Also push to generic reviews to show in admin dashboard reviews easily
     MockDB.addItem('reviews', {
       student: studentProfile?.name || 'Student',
+      studentName: studentProfile?.name || 'Student',
+      studentId: studentProfile?.id,
       course: course.name,
+      batchId: batch.id,
       rating,
       review: comments,
       status: 'Pending',

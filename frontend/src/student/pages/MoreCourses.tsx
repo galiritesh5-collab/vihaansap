@@ -1,13 +1,16 @@
 import React from 'react';
 import { useDB } from '../../hooks/useDB';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import CourseCard from '../../components/CourseCard';
 
 export default function MoreCourses() {
   const db = useDB();
   
-  // Show only published courses that the student isn't already enrolled in
-  // For now, we'll just show all published courses since we don't have the student's enrollment data here yet.
-  const activeCourses = db.courses.filter(course => course.status === 'Published' && !course.isUpcoming);
+  const { activeBatch } = useActiveBatch();
+  const activeCourseName = activeBatch?.course;
+  
+  // Show only published courses that the student isn't currently enrolled in via active batch
+  const activeCourses = db.courses.filter(course => course.status === 'Published' && course.name !== activeCourseName);
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6">

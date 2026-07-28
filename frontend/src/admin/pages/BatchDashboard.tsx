@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, MessageSquare, Star, Settings, Plus, PlayCircle, Edit2, Trash2, HelpCircle, X, ChevronDown, CheckCircle } from 'lucide-react';
@@ -21,8 +21,22 @@ function TodaySessionTab({ batchId }: { batchId: string }) {
     e.preventDefault();
     if (editing) {
       const payload = { ...editing, batchId, recipientType, recipientIds: recipientType === 'all' ? [] : recipientIds, createdAt: editing.createdAt || new Date().toISOString() };
-      if (editing.id) MockDB.updateItem('batchSessions', editing.id, payload);
-      else MockDB.addItem('batchSessions', payload);
+      if (editing.id) {
+        MockDB.updateItem('batchSessions', editing.id, payload);
+      } else {
+        MockDB.addItem('batchSessions', payload);
+        MockDB.addItem('notifications', {
+          title: "New Live Session Scheduled",
+          message: `A new session "${payload.title || payload.topic}" has been scheduled.`,
+          date: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+          type: 'info',
+          target: 'Batch',
+          targetId: batchId,
+          recipientType: recipientType,
+          recipientIds: payload.recipientIds,
+        });
+      }
       setEditing(null);
     }
   };
@@ -72,220 +86,10 @@ function TodaySessionTab({ batchId }: { batchId: string }) {
             <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Publish Session</button>
           </div>
         </form>
-      ) : <div className="divide-y rounded-xl border bg-white">{sessions.map(s => <div key={s.id} className="p-4 flex justify-between"><div><p className="font-bold">{s.title || s.topic}</p><p className="text-sm text-slate-500">{s.platform || 'Meeting'} · {s.sessionDateTime ? new Date(s.sessionDateTime).toLocaleString() : `${s.date || ''} ${s.time || ''}`}</p></div><button onClick={() => { setEditing(s); setRecipientType(s.recipientType || s.recipientMode || 'all'); setRecipientIds(s.recipientIds || []); }} className="text-indigo-600 font-semibold text-sm">Edit</button></div>)}{sessions.length === 0 && <div className="p-10 text-center text-slate-500">No sessions published.</div>}</div>}
+      ) : <div className="divide-y rounded-xl border bg-white">{sessions.map(s => <div key={s.id} className="p-4 flex justify-between"><div><p className="font-bold">{s.title || s.topic}</p><p className="text-sm text-slate-500">{s.platform || 'Meeting'} Â· {s.sessionDateTime ? new Date(s.sessionDateTime).toLocaleString() : `${s.date || ''} ${s.time || ''}`}</p></div><button onClick={() => { setEditing(s); setRecipientType(s.recipientType || s.recipientMode || 'all'); setRecipientIds(s.recipientIds || []); }} className="text-indigo-600 font-semibold text-sm">Edit</button></div>)}{sessions.length === 0 && <div className="p-10 text-center text-slate-500">No sessions published.</div>}</div>}
     </div>
   );
 }
-
-function WeeklyPlannerTab({ batchId }: { batchId: string }) {
-    const db = useDB();
-    const planner = db.batchPlanner?.filter(p => p.batchId === batchId).sort((a, b) => a.weekNumber - b.weekNumber) || [];
-    const [editing, setEditing] = useState<Partial<BatchPlannerWeek> | null>(null);
-    const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
-    const [newSubTopic, setNewSubTopic] = useState<Record<string, string>>({});
-  
-    const handleSave = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (editing) {
-        if (editing.id) {
-          MockDB.updateItem('batchPlanner', editing.id, editing);
-        } else {
-          MockDB.addItem('batchPlanner', { ...editing, batchId, weekNumber: planner.length + 1, topicItems: [] });
-        }
-        setEditing(null);
-      }
-    };
-
-    const toggleSubTopicStatus = (weekId: string, week: BatchPlannerWeek, topicId: string, subId: string) => {
-      const topicItems = (week.topicItems || []).map(t => {
-        if (t.id !== topicId) return t;
-        const subTopics = (t.subTopics || []).map(s => 
-          s.id === subId ? { ...s, status: s.status === 'Completed' ? 'Upcoming' : 'Completed' } : s
-        );
-        const allDone = subTopics.length > 0 && subTopics.every(s => s.status === 'Completed');
-        return { ...t, subTopics, status: allDone ? 'Completed' : t.status === 'Completed' ? 'In Progress' : t.status } as any;
-      });
-      MockDB.updateItem('batchPlanner', weekId, { ...week, topicItems });
-    };
-
-    const addSubTopic = (weekId: string, week: BatchPlannerWeek, topicId: string) => {
-      const title = newSubTopic[topicId]?.trim();
-      if (!title) return;
-      const topicItems = (week.topicItems || []).map(t => {
-        if (t.id !== topicId) return t;
-        return { ...t, subTopics: [...(t.subTopics || []), { id: `st-${Date.now()}`, title, status: 'Upcoming' }] };
-      });
-      MockDB.updateItem('batchPlanner', weekId, { ...week, topicItems });
-      setNewSubTopic({ ...newSubTopic, [topicId]: '' });
-    };
-
-    const addTopicToWeek = (weekId: string, week: BatchPlannerWeek, title: string) => {
-      if (!title.trim()) return;
-      const topicItems = [...(week.topicItems || []), { id: `t-${Date.now()}`, title, status: 'Upcoming', subTopics: [] }];
-      MockDB.updateItem('batchPlanner', weekId, { ...week, topicItems });
-    };
-
-    const setTopicStatus = (weekId: string, week: BatchPlannerWeek, topicId: string, status: string) => {
-      const topicItems = (week.topicItems || []).map(t => t.id === topicId ? { ...t, status } : t);
-      const allDone = topicItems.length > 0 && topicItems.every(t => t.status === 'Completed');
-      const anyInProgress = topicItems.some(t => t.status === 'In Progress' || t.status === 'Completed');
-      const weekStatus = allDone ? 'Completed' : anyInProgress ? 'In Progress' : 'Upcoming';
-      MockDB.updateItem('batchPlanner', weekId, { ...week, topicItems, status: weekStatus });
-    };
-  
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-800">Weekly Planner</h3>
-          <button 
-            onClick={() => setEditing({ title: '', topics: [] })}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" /> Add Week
-          </button>
-        </div>
-  
-        {editing && (
-          <form onSubmit={handleSave} className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Week Title</label>
-              <input required type="text" value={editing.title || ''} onChange={e => setEditing({...editing, title: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Introduction to SAP FICO" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Topics (comma separated)</label>
-              <textarea required rows={3} value={editing.topics?.join(', ') || ''} onChange={e => setEditing({...editing, topics: e.target.value.split(',').map(t => t.trim())})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-              <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Week</button>
-            </div>
-          </form>
-        )}
-  
-        <div className="space-y-4">
-          {planner.map((week, idx) => {
-            const topicItems = week.topicItems || week.topics.map((t, ti) => ({ id: `legacy-${ti}`, title: t, status: 'Upcoming', subTopics: [] }));
-            const completedTopics = topicItems.filter(t => t.status === 'Completed').length;
-            const progress = topicItems.length > 0 ? Math.round((completedTopics / topicItems.length) * 100) : 0;
-            const isExpanded = expandedWeeks[week.id];
-
-            return (
-              <div key={week.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                {/* Week Header */}
-                <div className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedWeeks(prev => ({...prev, [week.id]: !prev[week.id]}))}>
-                  <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center shrink-0 ${
-                    week.status === 'Completed' ? 'bg-green-50 text-green-700' :
-                    week.status === 'In Progress' ? 'bg-blue-50 text-blue-700' : 'bg-indigo-50 text-indigo-700'
-                  }`}>
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Week</span>
-                    <span className="text-xl font-black">{idx + 1}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-slate-800 truncate">{week.title}</h4>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        week.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                        week.status === 'In Progress' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                      }`}>{week.status || 'Upcoming'}</span>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
-                      </div>
-                      <span className="text-xs text-slate-500 font-medium shrink-0">{completedTopics}/{topicItems.length} topics</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={e => { e.stopPropagation(); setEditing(week); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={e => { e.stopPropagation(); MockDB.deleteItem('batchPlanner', week.id); }} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </div>
-                </div>
-
-                {/* Topics List (Expanded) */}
-                {isExpanded && (
-                  <div className="border-t border-slate-100 divide-y divide-slate-50">
-                    {topicItems.map((topic) => (
-                      <div key={topic.id} className="p-4 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={topic.status}
-                            onChange={e => setTopicStatus(week.id, week, topic.id, e.target.value)}
-                            className={`text-xs font-bold px-2 py-1 rounded-md border-0 focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-                              topic.status === 'Completed' ? 'bg-green-50 text-green-700' :
-                              topic.status === 'In Progress' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            <option value="Upcoming">Upcoming</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                          </select>
-                          <span className="font-semibold text-slate-700 text-sm">{topic.title}</span>
-                        </div>
-                        {/* Sub-topics */}
-                        {topic.subTopics && topic.subTopics.length > 0 && (
-                          <div className="ml-8 space-y-1.5">
-                            {topic.subTopics.map(sub => (
-                              <div key={sub.id} className="flex items-center gap-2">
-                                <button onClick={() => toggleSubTopicStatus(week.id, week, topic.id, sub.id)} className={`w-4 h-4 rounded flex items-center justify-center border-2 transition-colors ${sub.status === 'Completed' ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300 hover:border-green-400'}`}>
-                                  {sub.status === 'Completed' && <CheckCircle className="w-3 h-3" />}
-                                </button>
-                                <span className={`text-xs ${sub.status === 'Completed' ? 'line-through text-slate-400' : 'text-slate-600'}`}>{sub.title}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {/* Add sub-topic input */}
-                        <div className="ml-8 flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Add sub-topic..."
-                            value={newSubTopic[topic.id] || ''}
-                            onChange={e => setNewSubTopic({ ...newSubTopic, [topic.id]: e.target.value })}
-                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubTopic(week.id, week, topic.id); } }}
-                            className="flex-1 text-xs px-3 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                          />
-                          <button onClick={() => addSubTopic(week.id, week, topic.id)} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold">Add</button>
-                        </div>
-                      </div>
-                    ))}
-                    {/* Add new topic */}
-                    <div className="p-3 flex gap-2">
-                      <input
-                        type="text"
-                        id={`new-topic-${week.id}`}
-                        placeholder="Add topic to this week..."
-                        className="flex-1 text-sm px-3 py-2 border border-dashed border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400"
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            const input = e.target as HTMLInputElement;
-                            addTopicToWeek(week.id, week, input.value);
-                            input.value = '';
-                          }
-                        }}
-                      />
-                      <button onClick={() => {
-                        const input = document.getElementById(`new-topic-${week.id}`) as HTMLInputElement;
-                        if (input) { addTopicToWeek(week.id, week, input.value); input.value = ''; }
-                      }} className="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg font-semibold text-slate-700">+ Topic</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        {planner.length === 0 && !editing && (
-          <div className="text-slate-500 p-12 text-center bg-white rounded-xl border border-slate-200 flex flex-col items-center">
-            <Calendar className="w-12 h-12 text-slate-300 mb-3" />
-            <h3 className="font-bold text-slate-700">No Weekly Planner Yet</h3>
-            <p className="text-sm mt-1 max-w-sm">Create weekly plans to track batch progress week by week.</p>
-          </div>
-        )}
-      </div>
-    );
-  }
-
 
 function CourseCalendarTab({ batchId }: { batchId: string }) {
   const db = useDB();
@@ -362,11 +166,6 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
       MockDB.addItem('batchSessions', payload);
     }
 
-    // Update progress for enrolled students based on COMPLETED Main Topics
-    const allSessions = db.batchSessions?.filter((ss: any) => ss.batchId === batchId) || [];
-    const total = syllabus.length || 1;
-    const completedCount = [...allSessions.filter((ss: any) => ss.id !== s.id), { ...payload }].filter((ss: any) => ss.status === 'Completed').length;
-
     setEditingIdx(null);
   };
 
@@ -380,7 +179,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
           <h3 className="text-lg font-bold text-slate-800">Course Calendar</h3>
           {syllabus.length > 0 && (
             <p className="text-xs text-slate-500 mt-1">
-              Auto-imported from <span className="font-semibold text-indigo-600">{course?.name}</span> syllabus • {completedSessions}/{totalSessions} sessions completed
+              Auto-imported from <span className="font-semibold text-indigo-600">{course?.name}</span> syllabus â€¢ {completedSessions}/{totalSessions} sessions completed
             </p>
           )}
         </div>
@@ -390,7 +189,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <p className="text-amber-700 font-semibold text-sm">No syllabus found for this batch's course.</p>
           <p className="text-amber-600 text-xs mt-1">
-            Go to <strong>Admin → Courses → {batch?.course}</strong> and add syllabus topics. They will appear here automatically.
+            Go to <strong>Admin â†’ Courses â†’ {batch?.course}</strong> and add syllabus topics. They will appear here automatically.
           </p>
         </div>
       )}
@@ -490,7 +289,7 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
                           onClick={() => setExpandedRow(expandedRow === idx ? null : idx)}
                           className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold hover:bg-slate-200 transition-colors"
                         >
-                          {s.subTopics.length} Subtopics {expandedRow === idx ? '▲' : '▼'}
+                          {s.subTopics.length} Subtopics {expandedRow === idx ? 'â–²' : 'â–¼'}
                         </button>
                       )}
                     </div>
@@ -520,15 +319,10 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
                         onClick={() => {
                           const payload = { batchId, syllabusIndex: idx, topic: s.topic, date: s.date || new Date().toISOString().split('T')[0], time: s.time, status: 'Completed' as const, subTopics: s.subTopics };
                           if (s.id) { MockDB.updateItem('batchSessions', s.id, payload); } else { MockDB.addItem('batchSessions', payload); }
-                          const allS = db.batchSessions?.filter((ss: any) => ss.batchId === batchId) || [];
-                          const total2 = syllabus.length || 1;
-                          const done = [...allS.filter((ss: any) => ss.id !== s.id), { ...payload }].filter((ss: any) => ss.status === 'Completed').length;
-                          const prog = Math.round((done / total2) * 100);
-                          (batch?.studentIds || []).forEach((sid: string) => MockDB.updateItem('students', sid, { progress: prog }));
                         }}
                         className="text-emerald-600 hover:text-emerald-800 text-xs font-bold p-1"
                       >
-                        ✓ Done
+                        âœ“ Done
                       </button>
                     )}
                   </td>
@@ -548,12 +342,26 @@ function CourseCalendarTab({ batchId }: { batchId: string }) {
                             </div>
                             <div className="text-right shrink-0">
                               <p className="text-xs font-bold text-slate-600">{st.date}</p>
-                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                st.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                st.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                              }`}>
-                                {st.status}
-                              </span>
+                              <div className="flex items-center justify-end gap-2 mt-1">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                  st.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                  st.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {st.status}
+                                </span>
+                                {st.status !== 'Completed' && (
+                                  <button
+                                    onClick={() => {
+                                      const newSubTopics = s.subTopics.map((sub: any) => sub.id === st.id ? { ...sub, status: 'Completed' } : sub);
+                                      const payload = { batchId, syllabusIndex: idx, topic: s.topic, date: s.date, time: s.time, status: s.status, subTopics: newSubTopics };
+                                      if (s.id) { MockDB.updateItem('batchSessions', s.id, payload); } else { MockDB.addItem('batchSessions', payload); }
+                                    }}
+                                    className="text-emerald-600 hover:text-emerald-800 text-[10px] font-bold p-1 bg-emerald-50 rounded"
+                                  >
+                                    âœ“ Done
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -585,7 +393,7 @@ function OverviewTab({ batchId }: { batchId: string }) {
   const materials = db.studyMaterials?.filter(m => m.batchId === batchId) || [];
   const recordings = db.recordings?.filter(r => r.batchId === batchId) || [];
   const doubts = db.doubts?.filter(d => d.batchId === batchId) || [];
-  const pendingDoubts = doubts.filter(d => d.status === 'Pending').length;
+  const pendingDoubts = doubts.filter(d => d.status === 'Pending' || d.status === 'Open').length;
   
   const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
   const todaySession = sessions.find(s => s.status === 'Live') || sessions.find(s => s.status === 'Upcoming');
@@ -615,38 +423,13 @@ function OverviewTab({ batchId }: { batchId: string }) {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="border border-slate-200 rounded-xl p-5">
-           <h4 className="font-bold text-slate-800 mb-4">Quick Actions</h4>
-           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <FileText className="w-5 h-5 mb-1" /> Upload Material
-             </button>
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <PlayCircle className="w-5 h-5 mb-1" /> Upload Recording
-             </button>
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <Video className="w-5 h-5 mb-1" /> Add Topic
-             </button>
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <MessageSquare className="w-5 h-5 mb-1" /> Send Notice
-             </button>
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <HelpCircle className="w-5 h-5 mb-1" /> View Doubts
-             </button>
-             <button className="flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-slate-600 text-xs font-bold transition-colors text-center">
-               <CheckSquare className="w-5 h-5 mb-1" /> Complete Session
-             </button>
-           </div>
-        </div>
-        
-        <div className="space-y-6">
+      <div className="space-y-4">
           <div className="border border-slate-200 rounded-xl p-5">
              <h4 className="font-bold text-slate-800 mb-3">Today's Class</h4>
              {todaySession ? (
                <div>
                  <p className="text-sm font-bold text-indigo-600">{todaySession.topic}</p>
-                 <p className="text-xs text-slate-500 mt-1">{todaySession.date} • {todaySession.time}</p>
+                 <p className="text-xs text-slate-500 mt-1">{todaySession.date} &bull; {todaySession.time}</p>
                  <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider rounded">{todaySession.status}</span>
                </div>
              ) : (
@@ -666,7 +449,6 @@ function OverviewTab({ batchId }: { batchId: string }) {
                <p className="text-sm text-slate-500">No recent announcements.</p>
              )}
           </div>
-        </div>
       </div>
     </div>
   );
@@ -713,7 +495,7 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
         </div>
         <button 
           onClick={handleSendReviewRequest}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2 shrink-0"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           <MessageSquare className="w-4 h-4" /> Send Review Request
         </button>
@@ -736,7 +518,7 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
                   </div>
                   <div>
                     <p className="font-bold text-slate-800 text-sm">{review.name || review.studentName || 'Student'}</p>
-                    <p className="text-xs text-slate-400">{review.date} • {review.course}</p>
+                    <p className="text-xs text-slate-400">{review.date} â€¢ {review.course}</p>
                   </div>
                   <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
                     review.status === 'Approved' ? 'bg-green-100 text-green-700' :
@@ -937,14 +719,28 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       if (editing.id) {
         MockDB.updateItem('studyMaterials', editing.id, matData);
       } else {
-        MockDB.addItem('studyMaterials', {
+        const newMat = {
           ...matData,
           batchId,
           uploadDate: new Date().toISOString().split('T')[0],
           createdAt: new Date().toISOString(),
           downloadAllowed: editing.downloadAllowed ?? true,
           visibility: editing.visibility || 'Students'
-        });
+        };
+        MockDB.addItem('studyMaterials', newMat);
+        if (newMat.visibility === 'Students') {
+          MockDB.addItem('notifications', {
+            title: "New Study Material",
+            message: `New material "${editing.title || 'Untitled'}" is available for download.`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+            type: 'info',
+            target: 'Batch',
+            targetId: batchId,
+            recipientType: recipientMode,
+            recipientIds: matData.recipientIds,
+          });
+        }
       }
       setEditing(null);
     }
@@ -1134,7 +930,7 @@ function AssignmentsTab({ batchId }: { batchId: string }) {
               </div>
               <div>
                 <h4 className="font-bold text-slate-800">{a.title}</h4>
-                <p className="text-xs text-slate-500">Due: {a.dueDate} ΓÇó Marks: {a.marks}</p>
+                <p className="text-xs text-slate-500">Due: {a.dueDate} â€¢ Marks: {a.marks}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1247,13 +1043,27 @@ function RecordingsTab({ batchId }: { batchId: string }) {
         MockDB.updateItem('recordings', editing.id, recData);
       } else {
         const batchObj = db.batches.find(b => b.id === batchId);
-        MockDB.addItem('recordings', {
+        const newRec = {
           ...recData,
           courseName: batchObj?.course || '',
           uploadDate: new Date().toISOString().split('T')[0],
           visibility: editing.visibility || 'Students',
           thumbnail: editing.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
-        });
+        };
+        MockDB.addItem('recordings', newRec);
+        if (newRec.visibility === 'Students') {
+          MockDB.addItem('notifications', {
+            title: "New Class Recording",
+            message: `Recording for "${newRec.title}" is now available.`,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: new Date().toISOString(),
+            type: 'info',
+            target: 'Batch',
+            targetId: batchId,
+            recipientType: recipientMode,
+            recipientIds: recData.recipientIds,
+          });
+        }
       }
       setEditing(null);
     }
@@ -1507,7 +1317,7 @@ function NotificationsTab({ batchId }: { batchId: string }) {
                 {n.title}
               </h4>
               <p className="text-sm text-slate-600 mt-1">{n.message}</p>
-              <p className="text-xs text-slate-500 mt-2">{n.date ? new Date(n.date).toLocaleString() : ''} {n.recipientMode === 'selected' ? `• ${(n.recipientIds||[]).length} recipients` : '• All students'}</p>
+              <p className="text-xs text-slate-500 mt-2">{n.date ? new Date(n.date).toLocaleString() : ''} {n.recipientMode === 'selected' ? `â€¢ ${(n.recipientIds||[]).length} recipients` : 'â€¢ All students'}</p>
             </div>
             <button onClick={() => MockDB.deleteItem('notifications', n.id)} className="text-slate-400 hover:text-red-600 p-2"><Trash2 className="w-4 h-4" /></button>
           </div>
@@ -1524,9 +1334,20 @@ function NotificationsTab({ batchId }: { batchId: string }) {
 
 function DoubtSupportTab({ batchId }: { batchId: string }) {
   const db = useDB();
-  const doubts = db.doubts?.filter(d => d.batchId === batchId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const doubts = db.doubts?.filter(d => {
+    if (d.batchId !== batchId) return false;
+    const lastActive = new Date(d.updatedAt || d.createdAt || d.date || 0).getTime();
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return lastActive >= thirtyDaysAgo;
+  }).sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()) || [];
   const [selectedDoubt, setSelectedDoubt] = useState<any>(null);
   const [replyText, setReplyText] = useState('');
+
+  useEffect(() => {
+    if (!selectedDoubt) return;
+    const refreshed = db.doubts?.find(doubt => doubt.id === selectedDoubt.id);
+    if (refreshed) setSelectedDoubt(refreshed);
+  }, [db.doubts, selectedDoubt?.id]);
 
   const handleReplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1535,7 +1356,8 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
     MockDB.updateItem('doubts', selectedDoubt.id, {
       ...selectedDoubt,
       replies: [...(selectedDoubt.replies || []), { text: replyText, author: 'Admin', date: new Date().toISOString() }],
-      status: 'Answered'
+      status: 'Answered',
+      updatedAt: new Date().toISOString()
     });
     
     setReplyText('');
@@ -1544,7 +1366,7 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
   };
 
   const handleUpdateStatus = (id: string, status: string) => {
-    MockDB.updateItem('doubts', id, { status });
+    MockDB.updateItem('doubts', id, { status, updatedAt: new Date().toISOString() });
     if (selectedDoubt?.id === id) {
       setSelectedDoubt({ ...selectedDoubt, status });
     }
@@ -1568,7 +1390,7 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
                 }`}>{d.status}</span>
               </div>
               <p className="text-sm text-slate-600 mb-2 line-clamp-2">{d.description || d.question}</p>
-              <p className="text-xs text-slate-500">Student: {d.studentName || d.student} ΓÇó Date: {d.date}</p>
+              <p className="text-xs text-slate-500">Student: {d.studentName || d.student} &bull; Date: {d.date}</p>
               <div className="mt-4 flex justify-end">
                 <button onClick={() => setSelectedDoubt(d)} className="text-sm font-semibold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">View & Reply</button>
               </div>
@@ -1596,6 +1418,7 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
           onChange={e => handleUpdateStatus(selectedDoubt.id, e.target.value)}
           className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none"
         >
+          <option value="Open">Mark Open</option>
           <option value="Pending">Mark Pending</option>
           <option value="Answered">Mark Answered</option>
           <option value="Closed">Mark Closed</option>
@@ -1638,7 +1461,6 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
   );
 }
 
-
 export default function BatchDashboard() {
   const { batchId } = useParams();
   const db = useDB();
@@ -1654,7 +1476,6 @@ export default function BatchDashboard() {
     { name: 'Overview', icon: Calendar },
     { name: 'Students', icon: Users },
     { name: 'Course Calendar', icon: Calendar },
-    { name: 'Weekly Planner', icon: Calendar },
     { name: "Today's Session", icon: Video },
     { name: 'Study Materials', icon: FileText },
     { name: 'Recordings', icon: PlayCircle },
@@ -1671,7 +1492,7 @@ export default function BatchDashboard() {
         </Link>
         <div>
           <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">{batch.name}</h2>
-          <p className="text-slate-500 text-sm mt-1">{batch.course} • Mentor: {batch.mentor}</p>
+          <p className="text-slate-500 text-sm mt-1">{batch.course} &bull; Mentor: {batch.mentor}</p>
         </div>
       </div>
 
@@ -1694,7 +1515,6 @@ export default function BatchDashboard() {
         {activeTab === 'Overview' && <OverviewTab batchId={batchId as string} />}
         {activeTab === "Today's Session" && <TodaySessionTab batchId={batchId as string} />}
         {activeTab === 'Course Calendar' && <CourseCalendarTab batchId={batchId as string} />}
-        {activeTab === 'Weekly Planner' && <WeeklyPlannerTab batchId={batchId as string} />}
         {activeTab === 'Study Materials' && <StudyMaterialsTab batchId={batchId as string} />}
         {activeTab === 'Students' && <StudentsTab batchId={batchId as string} />}
         {activeTab === 'Recordings' && <RecordingsTab batchId={batchId as string} />}
@@ -1705,6 +1525,3 @@ export default function BatchDashboard() {
     </div>
   );
 }
-
-
-

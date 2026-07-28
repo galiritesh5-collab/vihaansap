@@ -63,13 +63,33 @@ function StudentLayoutContent() {
 
   const db = useDB();
 
-  // Check for mandatory feedback
+  // Check for mandatory feedback (Batch Completed)
   const myBatches = db.batches?.filter(b => b.studentIds?.includes(user?.uid) || b.studentIds?.includes((user as any)?.id)) || [];
-  const pendingFeedbackBatch = myBatches.find(b => {
+  const mandatoryFeedbackBatch = myBatches.find(b => {
     if (b.status !== 'Completed') return false;
-    const hasFeedback = db.courseRatings?.some(r => r.batchId === b.id && r.studentId === user?.uid);
+    const hasFeedback = db.courseRatings?.some(r => r.batchId === b.id && r.studentId === (user?.uid || (user as any)?.id));
     return !hasFeedback;
   });
+
+  // Check for requested feedback (via Admin notification)
+  const feedbackRequestNotification = db.notifications?.find(n => 
+    n.isFeedbackRequest && 
+    n.target === 'Batch' && 
+    myBatches.some(b => b.id === n.targetId) &&
+    !db.courseRatings?.some(r => r.batchId === n.targetId && r.studentId === (user?.uid || (user as any)?.id))
+  );
+  
+  const requestedFeedbackBatch = feedbackRequestNotification 
+    ? myBatches.find(b => b.id === feedbackRequestNotification.targetId) 
+    : null;
+
+  const pendingFeedbackBatch = mandatoryFeedbackBatch || requestedFeedbackBatch;
+  const isMandatory = !!mandatoryFeedbackBatch;
+
+  // We need a local state to allow dismissing the non-mandatory one for the current session
+  const [dismissedFeedback, setDismissedFeedback] = useState(false);
+  
+  const showFeedbackModal = pendingFeedbackBatch && (!dismissedFeedback || isMandatory);
 
   const notifications = db.notifications?.filter(n => {
     if (n.target === 'Everyone' || n.target === 'Students') return true;
@@ -97,11 +117,10 @@ function StudentLayoutContent() {
   const navItems = [
     { name: 'Dashboard',        path: '/student/dashboard',     icon: LayoutDashboard },
     { name: 'My Courses',       path: '/student/courses',        icon: BookOpen },
-    { name: 'Weekly Planner',   path: '/student/weekly-planner', icon: Calendar },
     { name: "Today's Session", path: '/student/todays-session', icon: MonitorPlay },
     { name: 'Recorded Classes', path: '/student/recordings',     icon: Video },
     { name: 'Study Materials',  path: '/student/materials',      icon: FileText },
-    { name: 'Calendar',         path: '/student/calendar',       icon: Calendar },
+    { name: 'Course Calendar',  path: '/student/course-calendar', icon: Calendar },
     { name: 'Doubt Support',    path: '/student/doubts',         icon: HelpCircle },
     { name: 'Notifications',    path: '/student/notifications',  icon: Bell },
     { name: 'More Courses',     path: '/student/more-courses',   icon: Search },
@@ -260,13 +279,13 @@ function StudentLayoutContent() {
           </div>
         </header>
 
-        {/* Mandatory Feedback Overlay */}
-        {pendingFeedbackBatch && (
+        {/* Mandatory/Requested Feedback Overlay */}
+        {showFeedbackModal && pendingFeedbackBatch && (
           <CourseRatingModal
             batch={pendingFeedbackBatch}
             course={db.courses.find(c => c.name === pendingFeedbackBatch.course)}
-            onClose={() => {}}
-            isMandatory={true}
+            onClose={() => setDismissedFeedback(true)}
+            isMandatory={isMandatory}
           />
         )}
 

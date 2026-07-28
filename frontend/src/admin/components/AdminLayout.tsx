@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   Server, LayoutDashboard, Users, UserCog, BookOpen, Layers, 
-  FileText, Star, Calendar as CalendarIcon, Bell, HelpCircle, 
+  FileText, Star, Bell, HelpCircle, 
   Settings, LogOut, Menu, X, ChevronDown, ShieldCheck, Inbox, Search, Palette, IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,7 +28,7 @@ export default function AdminLayout() {
 
   // Mentor Route Guard
   if (currentUser && userRole === 'mentor') {
-    const allowedPrefixes = ['/admin/dashboard', '/admin/batches', '/admin/calendar', '/admin/notifications', '/admin/doubts'];
+    const allowedPrefixes = ['/admin/dashboard', '/admin/batches', '/admin/notifications', '/admin/doubts'];
     const isAllowed = allowedPrefixes.some(prefix => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
     if (!isAllowed) {
       return <Navigate to="/admin/dashboard" replace />;
@@ -52,7 +52,6 @@ export default function AdminLayout() {
     { name: 'Blogs', path: '/admin/blogs', icon: FileText },
     { name: 'Reviews', path: '/admin/reviews', icon: Star },
     { name: 'FAQs', path: '/admin/faqs', icon: HelpCircle },
-    { name: 'Calendar', path: '/admin/calendar', icon: CalendarIcon },
     { name: 'Notifications', path: '/admin/notifications', icon: Bell },
     { name: 'Doubt Support', path: '/admin/doubts', icon: HelpCircle },
     { name: 'Role Management', path: '/admin/roles', icon: ShieldCheck },
@@ -61,7 +60,7 @@ export default function AdminLayout() {
   ];
 
   const navItems = (currentUser && userRole === 'mentor')
-    ? allNavItems.filter(item => ['Dashboard', 'Batches', 'Calendar', 'Notifications', 'Doubt Support'].includes(item.name))
+    ? allNavItems.filter(item => ['Dashboard', 'Batches', 'Notifications', 'Doubt Support'].includes(item.name))
     : allNavItems;
 
   return (

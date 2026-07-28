@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
 import { HelpCircle, Search, Filter, MessageSquare, CheckCircle, XCircle, User, X, Send } from 'lucide-react';
@@ -16,7 +16,13 @@ export default function DoubtSupport() {
     const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) || studentName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || doubt.status === statusFilter;
     return matchesSearch && matchesStatus;
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }).sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
+
+  useEffect(() => {
+    if (!selectedDoubt) return;
+    const refreshed = db.doubts.find(doubt => doubt.id === selectedDoubt.id);
+    if (refreshed) setSelectedDoubt(refreshed);
+  }, [db.doubts, selectedDoubt?.id]);
 
   const handleReplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +31,8 @@ export default function DoubtSupport() {
     MockDB.updateItem('doubts', selectedDoubt.id, {
       ...selectedDoubt,
       replies: [...(selectedDoubt.replies || []), { text: replyText, author: 'Admin', date: new Date().toISOString() }],
-      status: 'Answered' // Auto-resolve on reply
+      status: 'Answered',
+      updatedAt: new Date().toISOString()
     });
     
     setReplyText('');
@@ -36,7 +43,7 @@ export default function DoubtSupport() {
   };
 
   const handleUpdateStatus = (id: string, status: string) => {
-    MockDB.updateItem('doubts', id, { status });
+    MockDB.updateItem('doubts', id, { status, updatedAt: new Date().toISOString() });
     if (selectedDoubt?.id === id) {
       setSelectedDoubt({ ...selectedDoubt, status });
     }
@@ -73,6 +80,7 @@ export default function DoubtSupport() {
                 className="text-sm font-medium text-slate-700 bg-transparent focus:outline-none cursor-pointer"
               >
                 <option value="All">All Status</option>
+                <option value="Open">Open</option>
                 <option value="Pending">Pending</option>
                 <option value="Answered">Answered</option>
                 <option value="Closed">Closed</option>
@@ -95,7 +103,7 @@ export default function DoubtSupport() {
                   }`}>
                     {doubt.status}
                   </span>
-                  <span className="text-xs text-slate-400">{doubt.date}</span>
+                  <span className="text-xs text-slate-400">{doubt.createdAt ? new Date(doubt.createdAt).toLocaleString() : doubt.date}</span>
                 </div>
                 <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{doubt.title || doubt.subject}</h4>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-1">{doubt.description || doubt.question}</p>
@@ -137,6 +145,7 @@ export default function DoubtSupport() {
                     onChange={e => handleUpdateStatus(selectedDoubt.id, e.target.value)}
                     className="text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none"
                   >
+                    <option value="Open">Mark Open</option>
                     <option value="Pending">Mark Pending</option>
                     <option value="Answered">Mark Answered</option>
                     <option value="Closed">Mark Closed</option>

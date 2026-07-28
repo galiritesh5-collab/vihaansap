@@ -36,8 +36,7 @@ import BatchWorkspace from './student/pages/BatchWorkspace';
 import DoubtSupport from './student/pages/DoubtSupport';
 import Notifications from './student/pages/Notifications';
 import MoreCourses from './student/pages/MoreCourses';
-import Calendar from './student/pages/Calendar';
-import WeeklyPlanner from './student/pages/WeeklyPlanner';
+import CourseCalendar from './student/pages/CourseCalendar';
 import TodaysSession from './student/pages/TodaysSession';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -54,7 +53,6 @@ import BatchDashboard from './admin/pages/BatchDashboard';
 import AdminBlogs from './admin/pages/Blogs';
 import AdminReviews from './admin/pages/Reviews';
 import AdminFAQs from './admin/pages/FAQs';
-import AdminCalendar from './admin/pages/Calendar';
 import AdminNotifications from './admin/pages/Notifications';
 import AdminDoubts from './admin/pages/DoubtSupport';
 import AdminSettings from './admin/pages/Settings';
@@ -169,8 +167,7 @@ export default function App() {
           <Route path="materials" element={<StudyMaterials />} />
           <Route path="doubts" element={<DoubtSupport />} />
           <Route path="notifications" element={<Notifications />} />
-          <Route path="calendar" element={<Calendar />} />
-          <Route path="weekly-planner" element={<WeeklyPlanner />} />
+          <Route path="course-calendar" element={<CourseCalendar />} />
           <Route path="todays-session" element={<TodaysSession />} />
           <Route path="more-courses" element={<MoreCourses />} />
         </Route>
@@ -188,7 +185,6 @@ export default function App() {
           <Route path="blogs" element={<AdminBlogs />} />
           <Route path="reviews" element={<AdminReviews />} />
           <Route path="faqs" element={<AdminFAQs />} />
-          <Route path="calendar" element={<AdminCalendar />} />
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="doubts" element={<AdminDoubts />} />
           <Route path="server-access" element={<ServerAccessAdmin />} />

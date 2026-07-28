@@ -6,7 +6,9 @@ export function useDB() {
 
   useEffect(() => {
     const handleUpdate = () => {
-      setDb(MockDB.get());
+      // MockDB updates collections optimistically. Give React a new top-level
+      // reference so operational screens immediately render the changed data.
+      setDb({ ...MockDB.get() });
     };
     window.addEventListener('db_updated', handleUpdate);
     return () => window.removeEventListener('db_updated', handleUpdate);

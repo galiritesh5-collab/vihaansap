@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { HelpCircle, Plus, X, Send, Paperclip } from 'lucide-react';
@@ -6,12 +6,18 @@ import { MockDB } from '../../services/MockDB';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function DoubtSupport() {
-  const { studentProfile } = useAuth();
+  const { currentUser, studentProfile } = useAuth();
   const db = useDB();
   
   const { activeBatch, enrolledBatches } = useActiveBatch();
   const myBatches = enrolledBatches;
-  const myDoubts = db.doubts?.filter(d => d.studentId === studentProfile?.id && d.batchId === activeBatch?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const studentIds = [studentProfile?.id, currentUser?.uid].filter(Boolean);
+  const myDoubts = db.doubts?.filter(d => {
+    if (!studentIds.includes(d.studentId) || d.batchId !== activeBatch?.id) return false;
+    const lastActive = new Date(d.updatedAt || d.createdAt || d.date || 0).getTime();
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return lastActive >= thirtyDaysAgo;
+  }).sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()) || [];
   
   const [selectedDoubt, setSelectedDoubt] = useState<any | null>(null);
   const [isAsking, setIsAsking] = useState(false);
@@ -22,17 +28,35 @@ export default function DoubtSupport() {
   
   const [replyText, setReplyText] = useState('');
 
+  useEffect(() => {
+    if (!selectedDoubt) return;
+    const refreshed = db.doubts?.find(doubt => doubt.id === selectedDoubt.id);
+    if (refreshed) setSelectedDoubt(refreshed);
+  }, [db.doubts, selectedDoubt?.id]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeBatch || !studentProfile || !title.trim() || !description.trim()) return;
+    const course = db.courses.find(item => item.name === activeBatch.course);
+    const now = new Date().toISOString();
     const newDoubt = {
-      studentId: studentProfile.id,
+      id: `doubt-${Date.now()}`,
+      studentId: currentUser?.uid || studentProfile.id,
+      studentUid: currentUser?.uid || studentProfile.id,
       studentName: studentProfile.name,
-      batchId: batchId || activeBatch?.id,
-      title,
-      question: description,
-      description,
-      status: 'Pending',
-      date: new Date().toISOString().split('T')[0],
+      studentEmail: currentUser?.email || studentProfile.email || '',
+      batchId: activeBatch.id,
+      batchName: activeBatch.name,
+      courseId: course?.id || '',
+      courseName: activeBatch.course,
+      title: title.trim(),
+      subject: title.trim(),
+      question: description.trim(),
+      description: description.trim(),
+      status: 'Open',
+      date: now.split('T')[0],
+      createdAt: now,
+      updatedAt: now,
       replies: []
     };
     MockDB.addItem('doubts', newDoubt);
@@ -54,7 +78,8 @@ export default function DoubtSupport() {
     };
     
     MockDB.updateItem('doubts', selectedDoubt.id, {
-      replies: [...(selectedDoubt.replies || []), newReply]
+      replies: [...(selectedDoubt.replies || []), newReply],
+      updatedAt: new Date().toISOString()
     });
     
     setReplyText('');

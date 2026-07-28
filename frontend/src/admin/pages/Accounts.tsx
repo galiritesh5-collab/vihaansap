@@ -12,7 +12,7 @@ import { exportPaymentsExcel, exportPaymentsCSV, exportPaymentsPDF } from '../ut
 
 interface Installment {
   id: string;
-  amount: number;
+  amount?: number;
   dueDate: string;
   paidDate?: string;
   status: 'Paid' | 'Pending' | 'Overdue';
@@ -43,10 +43,12 @@ function formatINR(amount: number): string {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
 }
 
-function whatsAppLink(phone: string, message: string): string {
-  const cleaned = phone.replace(/\D/g, '');
-  const number = cleaned.startsWith('91') ? cleaned : `91${cleaned}`;
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+function whatsAppLink(phone: string, message: string): string | null {
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) cleaned = cleaned.slice(1);
+  if (cleaned.length === 10) cleaned = `91${cleaned}`;
+  if (!/^91[6-9]\d{9}$/.test(cleaned)) return null;
+  return `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
 }
 
 function buildPaymentReminder(record: AccountRecord, inst: Installment): string {
@@ -60,7 +62,7 @@ ${record.courseName}
 is pending.
 
 Amount:
-₹${inst.amount.toLocaleString('en-IN')}
+₹${(inst.amount || 0).toLocaleString('en-IN')}
 
 Due Date:
 ${inst.dueDate}
@@ -78,7 +80,7 @@ function buildPaymentConfirmation(record: AccountRecord, inst: Installment): str
 Thank you.
 
 We have successfully received your payment of
-₹${inst.amount.toLocaleString('en-IN')}
+₹${(inst.amount || 0).toLocaleString('en-IN')}
 for
 ${record.courseName}
 
@@ -90,6 +92,12 @@ Sri Vihaan SAP Consulting.`;
 
 
 // ─── Installment Badge ────────────────────────────────────────────────────────
+
+function buildPaidWhatsAppMessage(record: AccountRecord, inst: Installment): string {
+  const batchSuffix = record.batchName ? ` (${record.batchName})` : '';
+  const paidDate = inst.paidDate ? `\n\nPayment date: ${inst.paidDate}` : '';
+  return `Congratulations ${record.studentName}! We have successfully received your payment of ₹${(inst.amount || 0).toLocaleString('en-IN')} towards ${record.courseName}${batchSuffix}. Thank you for your payment.${paidDate}\n\n— Sri Vihaan Consulting`;
+}
 
 function StatusBadge({ status }: { status: Installment['status'] }) {
   const cfg = {
@@ -108,11 +116,11 @@ function StatusBadge({ status }: { status: Installment['status'] }) {
 
 function StatsSection({ records }: { records: AccountRecord[] }) {
   const totalRevenue = records.flatMap(r => r.installments)
-    .filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
+    .filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
   const pending = records.flatMap(r => r.installments)
-    .filter(i => i.status === 'Pending').reduce((s, i) => s + i.amount, 0);
+    .filter(i => i.status === 'Pending').reduce((s, i) => s + (i.amount || 0), 0);
   const overdue = records.flatMap(r => r.installments)
-    .filter(i => i.status === 'Overdue').reduce((s, i) => s + i.amount, 0);
+    .filter(i => i.status === 'Overdue').reduce((s, i) => s + (i.amount || 0), 0);
   const totalFees = records.reduce((s, r) => s + r.netFee, 0);
 
   const stats = [
@@ -144,24 +152,26 @@ function StatsSection({ records }: { records: AccountRecord[] }) {
 function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit: (r: AccountRecord) => void; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
 
-  const paidTotal = record.installments.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0);
-  const pendingTotal = record.installments.filter(i => i.status !== 'Paid').reduce((s, i) => s + i.amount, 0);
+  const paidTotal = record.installments.filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
+  const pendingTotal = record.installments.filter(i => i.status !== 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
 
   const markPaid = (instId: string) => {
+    const paidDate = new Date().toISOString().split('T')[0];
     const updated = {
       ...record,
       installments: record.installments.map(i =>
         i.id === instId
-          ? { ...i, status: 'Paid' as const, paidDate: new Date().toISOString().split('T')[0] }
+          ? { ...i, status: 'Paid' as const, paidDate }
           : i
       ),
     };
     MockDB.updateItem('accounts', record.id, updated);
     
     if (window.confirm("Payment marked as Paid. Send WhatsApp confirmation?")) {
-      const inst = record.installments.find(i => i.id === instId);
-      if (inst && record.studentPhone) {
-        window.open(whatsAppLink(record.studentPhone, buildPaymentConfirmation(record, inst)), "_blank");
+      const inst = updated.installments.find(i => i.id === instId);
+      const link = inst && record.studentPhone ? whatsAppLink(record.studentPhone, buildPaidWhatsAppMessage(record, inst)) : null;
+      if (link) {
+        window.open(link, "_blank", "noopener,noreferrer");
       }
     }
   };
@@ -230,7 +240,7 @@ function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit
                     {idx + 1}
                   </span>
                   <div>
-                    <p className="font-bold text-slate-800 text-sm">{formatINR(inst.amount)}</p>
+                    <p className="font-bold text-slate-800 text-sm">{formatINR(inst.amount || 0)}</p>
                     <p className="text-xs text-slate-400">
                       Due: {inst.dueDate}
                       {inst.paidDate ? ` · Paid: ${inst.paidDate}` : ''}
@@ -263,6 +273,14 @@ function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit
                       )}
                     </>
                   )}
+                  {inst.status === 'Paid' && record.studentPhone && (() => {
+                    const link = whatsAppLink(record.studentPhone, buildPaidWhatsAppMessage(record, inst));
+                    return link ? (
+                      <a href={link} target="_blank" rel="noreferrer" title="Send WhatsApp Payment Confirmation" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" onClick={e => e.stopPropagation()}>
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             ))}
@@ -298,6 +316,7 @@ function AccountModal({
     }
   );
   const [instCount, setInstCount] = useState(record?.installments?.length || 1);
+  const [formError, setFormError] = useState('');
 
   const selectedBatch = db.batches.find(b => b.id === form.batchId);
   const enrolledStudents = db.students.filter(s => selectedBatch?.studentIds?.includes(s.id));
@@ -322,6 +341,19 @@ function AccountModal({
   };
 
   const handleSave = () => {
+    const installments = form.installments || [];
+    const totalFee = Number(form.totalFee);
+    const discount = Number(form.discount || 0);
+    const netFee = Number(form.netFee);
+    const installmentTotal = installments.reduce((sum, installment) => sum + (Number(installment.amount) || 0), 0);
+    if (!form.batchId || !form.studentId) return setFormError('Select both a batch and a student.');
+    if (!Number.isFinite(totalFee) || totalFee <= 0) return setFormError('Enter a valid total course fee.');
+    if (!Number.isFinite(discount) || discount < 0 || discount > totalFee) return setFormError('Discount must be between ₹0 and the total course fee.');
+    if (!Number.isFinite(netFee) || netFee <= 0) return setFormError('Net payable must be greater than zero.');
+    if (installments.length === 0) return setFormError('Add at least one installment.');
+    if (installments.some(installment => !Number.isFinite(Number(installment.amount)) || Number(installment.amount) <= 0 || !installment.dueDate)) return setFormError('Each installment needs a valid positive amount and due date.');
+    if (Math.round(installmentTotal * 100) !== Math.round(netFee * 100)) return setFormError(`Installments total ${formatINR(installmentTotal)} but net payable is ${formatINR(netFee)}.`);
+    setFormError('');
     const batch = db.batches.find(b => b.id === form.batchId);
     const student = db.students.find(s => s.id === form.studentId);
     const final: AccountRecord = {
@@ -332,11 +364,11 @@ function AccountModal({
       batchId: form.batchId || '',
       batchName: batch?.name || form.batchName || '',
       courseName: batch?.course || form.courseName || '',
-      totalFee: form.totalFee || 0,
-      discount: form.discount || 0,
-      netFee: form.netFee || 0,
+      totalFee,
+      discount,
+      netFee,
       feePlan: form.feePlan || 'Full Payment',
-      installments: form.installments || [],
+      installments: installments as Installment[],
       notes: form.notes,
       createdAt: form.createdAt || new Date().toISOString().split('T')[0],
     };
@@ -450,14 +482,15 @@ function AccountModal({
                   <span className="col-span-1 text-xs font-bold text-slate-400 text-center">{idx + 1}</span>
                   <input
                     type="number"
-                    value={inst.amount}
+                    min={0}
+                    value={inst.amount ?? ''}
                     onChange={e => {
                       const insts = [...(form.installments || [])];
-                      insts[idx] = { ...insts[idx], amount: Number(e.target.value) };
+                      insts[idx] = { ...insts[idx], amount: e.target.value === '' ? undefined : Number(e.target.value) };
                       setForm(f => ({ ...f, installments: insts }));
                     }}
                     className="col-span-3 px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none"
-                    placeholder="Amount"
+                    placeholder="₹ Amount"
                   />
                   <input
                     type="date"
@@ -489,13 +522,15 @@ function AccountModal({
               ))}
               <button
                 type="button"
-                onClick={() => setForm(f => ({ ...f, installments: [...(f.installments || []), { id: `inst-${Date.now()}`, amount: 0, dueDate: new Date().toISOString().split('T')[0], status: 'Pending' }] }))}
+                onClick={() => setForm(f => ({ ...f, installments: [...(f.installments || []), { id: `inst-${Date.now()}`, amount: undefined, dueDate: new Date().toISOString().split('T')[0], status: 'Pending' }] }))}
                 className="text-xs text-indigo-600 font-bold hover:underline mt-1 flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" /> Add Installment
               </button>
             </div>
           </div>
+
+          {formError && <p role="alert" className="text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{formError}</p>}
 
           {/* Notes */}
           <div>
