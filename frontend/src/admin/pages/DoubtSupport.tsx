@@ -35,6 +35,25 @@ export default function DoubtSupport() {
       updatedAt: new Date().toISOString()
     });
     
+    // Add unified notification for the student
+    MockDB.addItem('notifications', {
+      notificationId: `notif-${Date.now()}`,
+      type: 'doubt_reply',
+      recipientType: 'student',
+      recipientIds: [selectedDoubt.studentUid || selectedDoubt.studentId],
+      batchId: selectedDoubt.batchId || '',
+      title: "New Reply to Your Doubt",
+      message: `Admin replied to your doubt: "${selectedDoubt.title || selectedDoubt.subject}"`,
+      relatedEntityType: 'doubt',
+      relatedEntityId: selectedDoubt.id,
+      createdAt: new Date().toISOString(),
+      readBy: [],
+      // Legacy fields
+      target: 'Specific Student',
+      targetId: selectedDoubt.studentUid || selectedDoubt.studentId,
+      date: new Date().toISOString().split('T')[0]
+    });
+    
     setReplyText('');
     
     // Refresh selected doubt

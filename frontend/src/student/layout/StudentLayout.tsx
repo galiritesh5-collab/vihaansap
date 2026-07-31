@@ -67,29 +67,30 @@ function StudentLayoutContent() {
   const myBatches = db.batches?.filter(b => b.studentIds?.includes(user?.uid) || b.studentIds?.includes((user as any)?.id)) || [];
   const mandatoryFeedbackBatch = myBatches.find(b => {
     if (b.status !== 'Completed') return false;
-    const hasFeedback = db.courseRatings?.some(r => r.batchId === b.id && r.studentId === (user?.uid || (user as any)?.id));
+    const hasFeedback = db.reviews?.some((r: any) => r.batchId === b.id && (r.studentUid === user?.uid || r.studentId === studentProfile?.id || r.studentId === user?.uid));
     return !hasFeedback;
   });
 
   // Check for requested feedback (via Admin notification)
   const feedbackRequestNotification = db.notifications?.find(n => 
-    n.isFeedbackRequest && 
-    n.target === 'Batch' && 
-    myBatches.some(b => b.id === n.targetId) &&
-    !db.courseRatings?.some(r => r.batchId === n.targetId && r.studentId === (user?.uid || (user as any)?.id))
+    (n.type === 'review_request' || n.isFeedbackRequest) && 
+    myBatches.some(b => b.id === (n.targetId || n.batchId || n.relatedEntityId)) &&
+    !db.reviews?.some((r: any) => r.batchId === (n.targetId || n.batchId || n.relatedEntityId) && (r.studentUid === user?.uid || r.studentId === studentProfile?.id || r.studentId === user?.uid))
   );
   
   const requestedFeedbackBatch = feedbackRequestNotification 
-    ? myBatches.find(b => b.id === feedbackRequestNotification.targetId) 
+    ? myBatches.find(b => b.id === (feedbackRequestNotification.targetId || feedbackRequestNotification.batchId || feedbackRequestNotification.relatedEntityId)) 
     : null;
 
   const pendingFeedbackBatch = mandatoryFeedbackBatch || requestedFeedbackBatch;
   const isMandatory = !!mandatoryFeedbackBatch;
 
-  // We need a local state to allow dismissing the non-mandatory one for the current session
   const [dismissedFeedback, setDismissedFeedback] = useState(false);
   
-  const showFeedbackModal = pendingFeedbackBatch && (!dismissedFeedback || isMandatory);
+  // Also check sessionStorage
+  const isSessionDismissed = pendingFeedbackBatch ? sessionStorage.getItem(`review_dismissed_${pendingFeedbackBatch.id}`) === 'true' : false;
+
+  const showFeedbackModal = pendingFeedbackBatch && (!dismissedFeedback && !isSessionDismissed || isMandatory);
 
   const notifications = db.notifications?.filter(n => {
     if (n.target === 'Everyone' || n.target === 'Students') return true;

@@ -463,19 +463,39 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
   const batchReviews = (db.reviews || []).filter((r: any) => r.batchId === batchId);
   
   const handleSendReviewRequest = () => {
+    const existingRequest = db.notifications?.find((n: any) => 
+      (n.batchId === batchId || n.targetId === batchId) && (n.type === 'review_request' || n.isFeedbackRequest)
+    );
+    if (existingRequest) {
+      alert("A review request is already active for this batch.");
+      return;
+    }
+
     MockDB.addItem('notifications', {
-      title: "Course Feedback Requested",
-      message: "Your batch has requested course feedback. Please share your rating and review.",
-      date: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      type: 'info',
-      target: 'Batch',
-      targetId: batchId,
+      notificationId: `notif-${Date.now()}`,
+      type: 'review_request',
       recipientType: 'all',
       recipientIds: [],
-      isFeedbackRequest: true
+      batchId: batchId,
+      title: "Course Feedback Requested",
+      message: "Your batch has requested course feedback. Please share your rating and review.",
+      relatedEntityType: 'batch',
+      relatedEntityId: batchId,
+      createdAt: new Date().toISOString(),
+      readBy: [],
+      // Backward compatibility fields
+      target: 'Batch',
+      targetId: batchId,
+      isFeedbackRequest: true,
+      date: new Date().toISOString().split('T')[0]
     });
     alert("Review request sent to all students in this batch.");
+  };
+
+  const handleCopyReviewLink = () => {
+    const link = `${window.location.origin}/student/dashboard?reviewBatchId=${batchId}`;
+    navigator.clipboard.writeText(link);
+    alert("Review link copied to clipboard!");
   };
 
   const handleApprove = (reviewId: string) => {
@@ -493,12 +513,20 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
           <h3 className="text-lg font-bold text-slate-800">Reviews & Feedback</h3>
           <p className="text-sm text-slate-500 mt-1">Manage student feedback and reviews for this batch.</p>
         </div>
-        <button 
-          onClick={handleSendReviewRequest}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
-        >
-          <MessageSquare className="w-4 h-4" /> Send Review Request
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleCopyReviewLink}
+            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+          >
+            Copy Review Link
+          </button>
+          <button 
+            onClick={handleSendReviewRequest}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+          >
+            <MessageSquare className="w-4 h-4" /> Send Review Request
+          </button>
+        </div>
       </div>
 
       {batchReviews.length === 0 ? (
@@ -730,15 +758,21 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
         MockDB.addItem('studyMaterials', newMat);
         if (newMat.visibility === 'Students') {
           MockDB.addItem('notifications', {
-            title: "New Study Material",
-            message: `New material "${editing.title || 'Untitled'}" is available for download.`,
-            date: new Date().toISOString().split('T')[0],
-            createdAt: new Date().toISOString(),
-            type: 'info',
-            target: 'Batch',
-            targetId: batchId,
+            notificationId: `notif-${Date.now()}`,
+            type: 'material_upload',
             recipientType: recipientMode,
             recipientIds: matData.recipientIds,
+            batchId: batchId,
+            title: "New Study Material",
+            message: `New material "${editing.title || 'Untitled'}" is available for download.`,
+            relatedEntityType: 'material',
+            relatedEntityId: newMat.id || '',
+            createdAt: new Date().toISOString(),
+            readBy: [],
+            // Legacy fields
+            target: 'Batch',
+            targetId: batchId,
+            date: new Date().toISOString().split('T')[0]
           });
         }
       }
@@ -1358,6 +1392,25 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
       replies: [...(selectedDoubt.replies || []), { text: replyText, author: 'Admin', date: new Date().toISOString() }],
       status: 'Answered',
       updatedAt: new Date().toISOString()
+    });
+    
+    // Add unified notification for the student
+    MockDB.addItem('notifications', {
+      notificationId: `notif-${Date.now()}`,
+      type: 'doubt_reply',
+      recipientType: 'student',
+      recipientIds: [selectedDoubt.studentUid || selectedDoubt.studentId],
+      batchId: batchId || selectedDoubt.batchId || '',
+      title: "New Reply to Your Doubt",
+      message: `A mentor replied to your doubt: "${selectedDoubt.title || selectedDoubt.subject}"`,
+      relatedEntityType: 'doubt',
+      relatedEntityId: selectedDoubt.id,
+      createdAt: new Date().toISOString(),
+      readBy: [],
+      // Legacy fields
+      target: 'Specific Student',
+      targetId: selectedDoubt.studentUid || selectedDoubt.studentId,
+      date: new Date().toISOString().split('T')[0]
     });
     
     setReplyText('');

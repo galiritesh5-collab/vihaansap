@@ -4,47 +4,60 @@ import { useAuth } from '../../contexts/AuthContext';
 import { MockDB } from '../../services/MockDB';
 
 export default function CourseRatingModal({ batch, course, onClose, isMandatory }: any) {
-  const { studentProfile } = useAuth();
+  const { studentProfile, currentUser } = useAuth();
   const [rating, setRating] = useState(0);
   const [comments, setComments] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [company, setCompany] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  const handleDismiss = () => {
+    if (batch?.id) {
+      sessionStorage.setItem(`review_dismissed_${batch.id}`, 'true');
+    }
+    if (onClose) onClose();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const review = {
-      batchId: batch.id,
-      courseId: course.id,
-      studentId: studentProfile?.id,
-      overallRating: rating,
-      comments,
-      status: 'Pending',
-      date: new Date().toISOString()
-    };
-    MockDB.addItem('courseRatings', review);
+    const now = new Date().toISOString();
     
-    // Also push to generic reviews to show in admin dashboard reviews easily
-    MockDB.addItem('reviews', {
-      student: studentProfile?.name || 'Student',
-      studentName: studentProfile?.name || 'Student',
-      studentId: studentProfile?.id,
-      course: course.name,
-      batchId: batch.id,
+    // ONE canonical review record
+    const review = {
+      id: `rev-${Date.now()}`,
+      reviewId: `rev-${Date.now()}`,
+      studentUid: currentUser?.uid || studentProfile?.id,
+      studentName: studentProfile?.name || currentUser?.displayName || 'Student',
+      batchId: batch?.id || '',
+      batchName: batch?.name || '',
+      courseId: course?.id || '',
+      courseName: course?.name || '',
       rating,
-      review: comments,
+      feedback: comments,
+      designation: designation.trim() || undefined,
+      company: company.trim() || undefined,
       status: 'Pending',
-      date: new Date().toISOString()
-    });
-
+      createdAt: now,
+      updatedAt: now,
+      // Backward compatibility fields for old queries:
+      student: studentProfile?.name || currentUser?.displayName || 'Student',
+      course: course?.name || '',
+      review: comments,
+      date: now
+    };
+    
+    MockDB.addItem('reviews', review);
+    
     setSubmitted(true);
     if (onClose) setTimeout(onClose, 2000);
-    if (isMandatory) window.location.reload();
+    if (isMandatory) setTimeout(() => window.location.reload(), 2000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm z-[100]">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
         {!isMandatory && (
-          <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+          <button onClick={handleDismiss} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         )}
@@ -60,10 +73,10 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
             </div>
           ) : (
             <>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">{isMandatory ? 'Feedback Required' : 'Rate Your Course'}</h3>
-              <p className="text-sm text-slate-500 mb-6">{course?.name}</p>
+              <h3 className="text-xl font-bold text-slate-800 mb-1">{isMandatory ? 'Feedback Required' : 'Rate Your Course'}</h3>
+              <p className="text-sm text-slate-500 mb-6 font-medium">{course?.name}</p>
               
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Overall Rating</label>
                   <div className="flex gap-2">
@@ -83,21 +96,44 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Comments</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Feedback</label>
                   <textarea
                     required
-                    rows={4}
+                    rows={3}
                     value={comments}
                     onChange={e => setComments(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-colors resize-none"
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-colors resize-none text-sm"
                     placeholder="Share your learning experience..."
                   ></textarea>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Designation (Optional)</label>
+                    <input
+                      type="text"
+                      value={designation}
+                      onChange={e => setDesignation(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white text-sm transition-colors"
+                      placeholder="e.g. Consultant"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Company (Optional)</label>
+                    <input
+                      type="text"
+                      value={company}
+                      onChange={e => setCompany(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white text-sm transition-colors"
+                      placeholder="e.g. IBM"
+                    />
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={rating === 0 || !comments}
-                  className="w-full py-3 bg-[#1763B6] text-white font-bold rounded-xl hover:bg-[#145096] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 mt-2 bg-[#1763B6] text-white font-bold rounded-xl hover:bg-[#145096] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Submit Review
                 </button>

@@ -99,14 +99,14 @@ export default function Reviews() {
             {filteredReviews?.map(review => (
               <tr key={review.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4">
-                  <p className="text-sm font-bold text-slate-800">{review.name}</p>
-                  <p className="text-xs text-slate-500">{review.role} @ {review.company}</p>
+                  <p className="text-sm font-bold text-slate-800">{review.studentName || review.name || review.student}</p>
+                  <p className="text-xs text-slate-500">{review.designation || review.role} {review.company ? `@ ${review.company}` : ''}</p>
                 </td>
                 <td className="px-6 py-4">
-                  <p className="text-sm font-semibold text-slate-800">{review.course || review.module}</p>
-                  <p className="text-xs text-slate-500">{db.batches?.find(b => b.id === review.batchId)?.name || review.batchId}</p>
+                  <p className="text-sm font-semibold text-slate-800">{review.courseName || review.course || review.module}</p>
+                  <p className="text-xs text-slate-500">{review.batchName || db.batches?.find(b => b.id === review.batchId)?.name || review.batchId}</p>
                 </td>
-                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{review.content || review.text}</td>
+                <td className="px-6 py-4 text-sm text-slate-600 max-w-xs truncate">{review.feedback || review.content || review.text || review.review}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{review.rating} / 5</td>
                 <td className="px-6 py-4">
                   <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
