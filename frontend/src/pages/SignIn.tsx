@@ -42,13 +42,7 @@ export default function SignIn() {
         {/* Logo & Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-6">
-            {config?.faviconUrl ? (
-              <img src={config.faviconUrl} alt="Sri Vihaan Favicon" className="h-16 w-16 object-contain rounded-2xl shadow-md p-1 bg-white border border-slate-100" />
-            ) : (
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 p-1">
-                <img src="/vite.svg" alt="Sri Vihaan" className="w-full h-full object-contain" />
-              </div>
-            )}
+            <img src="/favicon.png" alt="Sri Vihaan Favicon" className="h-16 w-16 object-contain rounded-2xl shadow-md p-1 bg-white border border-slate-100" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-800 tracking-tight">
             Welcome Back

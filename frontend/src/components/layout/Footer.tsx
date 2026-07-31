@@ -37,7 +37,7 @@ export default function Footer() {
                * Display     : max-h-[54px] max-w-[200px]
                */}
               <img
-                src={localFooterLogo}
+                src="/web-logo.png"
                 alt="Sri Vihaan Consulting"
                 className="max-h-[48px] sm:max-h-[54px] max-w-[180px] sm:max-w-[200px] object-contain transition-opacity group-hover:opacity-90"
               />

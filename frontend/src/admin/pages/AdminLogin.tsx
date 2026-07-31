@@ -56,9 +56,7 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link to="/" className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg border border-white/10">
-            <ShieldCheck className="w-8 h-8 text-white" />
-          </div>
+          <img src="/favicon.png" alt="Admin Icon" className="w-16 h-16 object-contain rounded-2xl shadow-lg border border-white/10 p-1 bg-white/5" />
         </Link>
         <h2 className="mt-6 text-center text-3xl font-display font-extrabold text-white tracking-tight">
           Admin Portal

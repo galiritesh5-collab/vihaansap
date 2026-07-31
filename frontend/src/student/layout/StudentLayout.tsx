@@ -148,18 +148,12 @@ function StudentLayoutContent() {
         {/* Sidebar Header — official logo only */}
         <div className="h-16 flex items-center justify-between px-5 bg-[#092e5c]">
           <Link to="/student/dashboard" className="flex items-center justify-center h-full py-2">
-            {brandingConfig?.logoUrl ? (
-              <img
-                src={brandingConfig.logoUrl}
-                alt="Sri Vihaan"
-                className="max-h-10 w-auto object-contain"
-                style={{ maxWidth: '160px' }}
-              />
-            ) : (
-              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
-                <img src="/vite.svg" alt="Sri Vihaan" className="w-7 h-7 object-contain" />
-              </div>
-            )}
+            <img
+              src="/web-logo.png"
+              alt="Sri Vihaan"
+              className="max-h-10 w-auto object-contain"
+              style={{ maxWidth: '160px' }}
+            />
           </Link>
           <button className="lg:hidden text-slate-300 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />

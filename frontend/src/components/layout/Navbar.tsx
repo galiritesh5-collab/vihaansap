@@ -16,8 +16,7 @@ import { Menu, X, BookOpen, User, BookOpenCheck, LogOut, GraduationCap, ChevronR
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandingConfig } from '../../hooks/useBrandingConfig';
 
-// Local branding asset — replace file to change logo, no code change needed
-import localLogo from '../../assets/branding/logo.svg';
+// Local branding asset removed in favor of /web-logo.png from public folder
 
 interface NavbarProps {
   onOpenDemo: () => void;
@@ -109,7 +108,7 @@ export default function Navbar({ onOpenDemo }: NavbarProps) {
                * Display     : max-h-[50px] max-w-[200px] (matches original size)
                */}
               <img
-                src={localLogo}
+                src="/web-logo.png"
                 alt="Sri Vihaan Consulting"
                 className="max-h-[48px] sm:max-h-[54px] max-w-[180px] sm:max-w-[220px] object-contain transition-transform duration-200 group-hover:scale-105"
               />

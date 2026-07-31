@@ -48,9 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Auth persistence error:', error);
     });
 
-    // ── Start Firestore real-time listener for the entire students collection ──
-    // This keeps MockDB['students'] in sync automatically for all components.
-    const unsubFirestore = FirestoreStudentService.subscribeToAll();
+    // ── Defer Firestore real-time listener for the entire students collection ──
+    // We only subscribe if the user is authenticated to save initial load bandwidth.
+    let unsubFirestore: (() => void) | undefined;
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
       // Must set loading to true while we fetch roles so ProtectedRoutes don't incorrectly block access
@@ -58,6 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
 
       if (user) {
+        if (!unsubFirestore) {
+          unsubFirestore = FirestoreStudentService.subscribeToAll();
+        }
         let role: 'admin' | 'mentor' | 'student' = 'student';
 
         // ── Fast path: Admin email check (no network needed) ──────────────────
@@ -182,7 +185,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       unsubAuth();
-      unsubFirestore();
+      if (unsubFirestore) {
+        unsubFirestore();
+      }
       window.removeEventListener('db_updated', handleDbUpdate);
     };
   }, []);
@@ -215,9 +220,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={value}>
       {loading ? (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <h2 className="text-xl font-bold text-slate-800 font-display">Sri Vihaan SAP</h2>
-          <p className="text-sm text-slate-500 mt-2">Loading your experience...</p>
+          <img src="/web-logo.png" alt="Sri Vihaan Logo" className="max-w-[220px] h-auto object-contain mb-8 animate-pulse" />
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-[#1763b6] rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500 mt-4 font-medium tracking-wide">Loading...</p>
         </div>
       ) : (
         children
