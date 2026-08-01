@@ -150,7 +150,7 @@ function StudentLayoutContent() {
         <div className="h-16 flex items-center justify-between px-5 bg-[#092e5c]">
           <Link to="/student/dashboard" className="flex items-center justify-center h-full py-2">
             <img
-              src="/web-logo.png"
+              src="/footer-logo.png"
               alt="Sri Vihaan"
               className="max-h-10 w-auto object-contain"
               style={{ maxWidth: '160px' }}

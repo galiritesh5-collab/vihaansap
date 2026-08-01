@@ -108,7 +108,7 @@ export default function Navbar({ onOpenDemo }: NavbarProps) {
                * Display     : max-h-[50px] max-w-[200px] (matches original size)
                */}
               <img
-                src="/web-logo.png"
+                src="/header-logo.png"
                 alt="Sri Vihaan Consulting"
                 className="max-h-[48px] sm:max-h-[54px] max-w-[180px] sm:max-w-[220px] object-contain transition-transform duration-200 group-hover:scale-105"
               />
