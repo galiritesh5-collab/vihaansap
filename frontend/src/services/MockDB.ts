@@ -73,10 +73,6 @@ export class MockDB {
     } catch (err) {
       console.warn('Backend not reachable, falling back to local memory.', err);
     } finally {
-      // Always start Firestore real-time sync whether mock backend works or not
-      import('./FirestoreDBService').then(m => {
-        m.FirestoreDBService.subscribeToAll();
-      });
       isSynced = true;
       window.dispatchEvent(new Event('db_updated'));
     }

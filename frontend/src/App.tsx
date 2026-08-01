@@ -1,5 +1,5 @@
 import { useBrandingConfig } from './hooks/useBrandingConfig';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Outlet, Navigate } from 'react-router-dom';
 import HeaderBar from './components/HeaderBar';
 import Navbar from './components/Navbar';
@@ -8,58 +8,58 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import DemoModal from './components/DemoModal';
 
 // Pages
-import Home from './pages/Home';
-import WhyVihaan from './pages/WhyVihaan';
-import Courses from './pages/Courses';
-import Reviews from './pages/Reviews';
-import FAQPage from './pages/FAQPage';
-import Blogs from './pages/Blogs';
-import BlogDetail from './pages/BlogDetail';
-import About from './pages/About';
-import ServerAccess from './pages/ServerAccess';
-import SignIn from './pages/SignIn';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import TermsConditions from './pages/TermsConditions';
-import CookiePolicy from './pages/CookiePolicy';
-import Disclaimer from './pages/Disclaimer';
-import RefundPolicy from './pages/RefundPolicy';
+const Home = lazy(() => import('./pages/Home'));
+const WhyVihaan = lazy(() => import('./pages/WhyVihaan'));
+const Courses = lazy(() => import('./pages/Courses'));
+const Reviews = lazy(() => import('./pages/Reviews'));
+const FAQPage = lazy(() => import('./pages/FAQPage'));
+const Blogs = lazy(() => import('./pages/Blogs'));
+const BlogDetail = lazy(() => import('./pages/BlogDetail'));
+const About = lazy(() => import('./pages/About'));
+const ServerAccess = lazy(() => import('./pages/ServerAccess'));
+const SignIn = lazy(() => import('./pages/SignIn'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsConditions = lazy(() => import('./pages/TermsConditions'));
+const CookiePolicy = lazy(() => import('./pages/CookiePolicy'));
+const Disclaimer = lazy(() => import('./pages/Disclaimer'));
+const RefundPolicy = lazy(() => import('./pages/RefundPolicy'));
 
 // Student Portal (Phase 1)
 
-import CompleteProfile from './student/pages/CompleteProfile';
+const CompleteProfile = lazy(() => import('./student/pages/CompleteProfile'));
 import StudentLayout from './student/layout/StudentLayout';
-import Dashboard from './student/pages/Dashboard';
-import MyCourses from './student/pages/MyCourses';
-import RecordedClasses from './student/pages/RecordedClasses';
-import StudyMaterials from './student/pages/StudyMaterials';
-import BatchWorkspace from './student/pages/BatchWorkspace';
-import DoubtSupport from './student/pages/DoubtSupport';
-import Notifications from './student/pages/Notifications';
-import MoreCourses from './student/pages/MoreCourses';
-import CourseCalendar from './student/pages/CourseCalendar';
-import TodaysSession from './student/pages/TodaysSession';
+const Dashboard = lazy(() => import('./student/pages/Dashboard'));
+const MyCourses = lazy(() => import('./student/pages/MyCourses'));
+const RecordedClasses = lazy(() => import('./student/pages/RecordedClasses'));
+const StudyMaterials = lazy(() => import('./student/pages/StudyMaterials'));
+const BatchWorkspace = lazy(() => import('./student/pages/BatchWorkspace'));
+const DoubtSupport = lazy(() => import('./student/pages/DoubtSupport'));
+const Notifications = lazy(() => import('./student/pages/Notifications'));
+const MoreCourses = lazy(() => import('./student/pages/MoreCourses'));
+const CourseCalendar = lazy(() => import('./student/pages/CourseCalendar'));
+const TodaysSession = lazy(() => import('./student/pages/TodaysSession'));
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Admin Portal
-import AdminLogin from './admin/pages/AdminLogin';
+const AdminLogin = lazy(() => import('./admin/pages/AdminLogin'));
 import AdminLayout from './admin/components/AdminLayout';
-import AdminDashboardNew from './admin/pages/Dashboard';
-import AdminLeads from './admin/pages/Leads';
-import AdminStudents from './admin/pages/Students';
-import AdminMentors from './admin/pages/Mentors';
-import AdminCourses from './admin/pages/Courses';
-import AdminBatches from './admin/pages/Batches';
-import BatchDashboard from './admin/pages/BatchDashboard';
-import AdminBlogs from './admin/pages/Blogs';
-import AdminReviews from './admin/pages/Reviews';
-import AdminFAQs from './admin/pages/FAQs';
-import AdminNotifications from './admin/pages/Notifications';
-import AdminDoubts from './admin/pages/DoubtSupport';
-import AdminSettings from './admin/pages/Settings';
-import ServerAccessAdmin from './admin/pages/ServerAccessAdmin';
-import BrandingAdmin from './admin/pages/BrandingAdmin';
-import AccountsAdmin from './admin/pages/Accounts';
-import AdminRoleManagement from './admin/pages/RoleManagement';
+const AdminDashboardNew = lazy(() => import('./admin/pages/Dashboard'));
+const AdminLeads = lazy(() => import('./admin/pages/Leads'));
+const AdminStudents = lazy(() => import('./admin/pages/Students'));
+const AdminMentors = lazy(() => import('./admin/pages/Mentors'));
+const AdminCourses = lazy(() => import('./admin/pages/Courses'));
+const AdminBatches = lazy(() => import('./admin/pages/Batches'));
+const BatchDashboard = lazy(() => import('./admin/pages/BatchDashboard'));
+const AdminBlogs = lazy(() => import('./admin/pages/Blogs'));
+const AdminReviews = lazy(() => import('./admin/pages/Reviews'));
+const AdminFAQs = lazy(() => import('./admin/pages/FAQs'));
+const AdminNotifications = lazy(() => import('./admin/pages/Notifications'));
+const AdminDoubts = lazy(() => import('./admin/pages/DoubtSupport'));
+const AdminSettings = lazy(() => import('./admin/pages/Settings'));
+const ServerAccessAdmin = lazy(() => import('./admin/pages/ServerAccessAdmin'));
+const BrandingAdmin = lazy(() => import('./admin/pages/BrandingAdmin'));
+const AccountsAdmin = lazy(() => import('./admin/pages/Accounts'));
+const AdminRoleManagement = lazy(() => import('./admin/pages/RoleManagement'));
 
 // Helper component to scroll window to top on route change
 function ScrollToTop() {
@@ -130,6 +130,7 @@ export default function App() {
     <Router>
       <ScrollToTop />
       
+      <Suspense fallback={<div className="h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]"><div className="initial-loader-spinner"></div></div>}>
       <Routes>
         {/* Public Website Routes */}
         <Route element={<PublicLayout handleBookDemo={handleBookDemo} />}>
@@ -194,6 +195,7 @@ export default function App() {
           <Route path="roles" element={<AdminRoleManagement />} />
         </Route>
       </Routes>
+      </Suspense>
 
       {/* Book Free Demo Modal Dialog */}
       <DemoModal isOpen={demoModalOpen} onClose={() => setDemoModalOpen(false)} />

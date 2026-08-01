@@ -5,6 +5,7 @@ import { auth, db as firestoreDb } from '../config/firebase';
 import { isAdminEmail } from '../config/adminConfig';
 import { MockDB } from '../services/MockDB';
 import { FirestoreStudentService } from '../services/FirestoreStudentService';
+import { FirestoreDBService } from '../services/FirestoreDBService';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         if (!unsubFirestore) {
           unsubFirestore = FirestoreStudentService.subscribeToAll();
+          FirestoreDBService.subscribeToAll();
         }
         let role: 'admin' | 'mentor' | 'student' = 'student';
 

@@ -4,9 +4,11 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const app = express();
+const compression = require('compression');
 
 // Middleware
 app.use(helmet());
+app.use(compression());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'https://vihaansap.vercel.app',
   credentials: true,
