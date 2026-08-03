@@ -146,16 +146,22 @@ function StudentLayoutContent() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         flex flex-col
       `}>
-        {/* Sidebar Header — official logo only */}
-        <div className="h-20 flex items-center justify-between px-6 bg-[#092e5c] border-b border-white/5 relative">
-          <Link to="/student/dashboard" className="flex items-center justify-center w-full h-full">
+        {/* Sidebar Header — branding */}
+        <div className="h-[72px] flex items-center bg-[#092e5c] border-b border-white/10 shrink-0">
+          <Link
+            to="/student/dashboard"
+            className="flex items-center justify-center w-full h-full px-5 py-3"
+          >
             <img
               src="/footer-logo.png"
-              alt="Sri Vihaan"
-              className="max-h-12 w-auto object-contain transition-transform duration-300 hover:scale-105"
+              alt="Sri Vihaan SAP Consulting"
+              className="h-10 max-w-[180px] w-auto object-contain"
             />
           </Link>
-          <button className="lg:hidden absolute right-4 text-slate-300 hover:text-white bg-white/10 p-1.5 rounded-md" onClick={() => setSidebarOpen(false)}>
+          <button
+            className="lg:hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            onClick={() => setSidebarOpen(false)}
+          >
             <X className="w-5 h-5" />
           </button>
         </div>

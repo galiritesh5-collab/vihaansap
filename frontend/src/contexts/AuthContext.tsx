@@ -14,7 +14,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   studentProfile: any | null;
   userRole: 'admin' | 'mentor' | 'student' | null;
-  refreshProfile: () => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,8 +33,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   };
 
-  const refreshProfile = () => {
+  const refreshProfile = async () => {
     if (currentUser) {
+      // Fetch directly from Firestore to avoid MockDB cache staleness
+      try {
+        const profile = await FirestoreStudentService.getStudent(currentUser.uid);
+        if (profile) {
+          setStudentProfile(profile);
+          return;
+        }
+      } catch (err) {
+        console.error('[AuthContext] refreshProfile Firestore error:', err);
+      }
+      // Fallback to MockDB
       fetchStudentProfile(currentUser.uid);
     }
   };
@@ -100,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (role === 'student') {
           // ── Firestore: check/create the student document ──────────────────
+          let firestoreProfile: any = null;
           try {
             const existing = await FirestoreStudentService.getStudent(user.uid);
 
@@ -130,40 +142,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 role: 'Student'
               };
               await MockDB.addItem('students', mockStudent);
+
+              // Use the new profile directly (profileCompleted = false → will show CompleteProfile)
+              firestoreProfile = { id: user.uid, ...newStudentData };
             } else {
               // Returning login — update lastLogin in Firestore
               await FirestoreStudentService.recordLogin(user.uid);
 
-              // ALSO update in MockDB (hits backend API) so it is updated in db.json
+              // Use the Firestore document directly as the profile — no race condition
+              firestoreProfile = existing;
+
+              // Also sync to MockDB in the background (non-blocking)
               const currentStudents = MockDB.getCollection('students') || [];
               const mockStudent = currentStudents.find((s: any) => s.uid === user.uid);
               if (mockStudent) {
-                await MockDB.updateItem('students', mockStudent.id, {
+                MockDB.updateItem('students', mockStudent.id, {
                   lastLogin: new Date().toISOString(),
                   loginCount: (mockStudent.loginCount || 0) + 1,
-                });
+                }).catch(console.error);
               } else {
                 // If somehow missing in MockDB/db.json but exists in Firestore
-                const mockStudent = {
+                MockDB.addItem('students', {
                   id: user.uid,
                   ...existing,
                   role: 'Student',
                   lastLogin: new Date().toISOString(),
                   loginCount: (existing.loginCount || 0) + 1,
-                };
-                await MockDB.addItem('students', mockStudent);
+                }).catch(console.error);
               }
             }
           } catch (err) {
             console.error('[AuthContext] Firestore student sync error:', err);
           }
 
-          // Now fetch from in-memory MockDB (which Firestore listener keeps fresh)
-          // Small delay to allow the snapshot listener to update MockDB first
-          setTimeout(() => {
+          // ── Set profile IMMEDIATELY from the Firestore document ──────────
+          // This eliminates the race condition where MockDB hasn't been
+          // populated yet by the onSnapshot listener on page refresh.
+          if (firestoreProfile) {
+            setStudentProfile(firestoreProfile);
+          } else {
+            // Fallback: try MockDB (it may have been populated by now)
             fetchStudentProfile(user.uid);
-            setLoading(false);
-          }, 500);
+          }
+          setLoading(false);
         } else {
            // Admin or Mentor role doesn't use studentProfile
            setStudentProfile(null);
