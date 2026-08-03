@@ -17,7 +17,7 @@ export interface StudentReview {
   name: string;
   role: string;
   company?: string;
-  image: string;
+  image?: string;
   content: string;
   rating?: number;
   text?: string;
@@ -25,6 +25,13 @@ export interface StudentReview {
   module?: string;
   course: string;
   status?: 'Pending' | 'Approved' | 'Rejected';
+  // Additional properties for backward compatibility with older review objects
+  student?: string;
+  studentName?: string;
+  designation?: string;
+  courseName?: string;
+  feedback?: string;
+  review?: string;
 }
 
 export interface CourseRating {

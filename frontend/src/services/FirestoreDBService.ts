@@ -67,25 +67,12 @@ export class FirestoreDBService {
             ...d.data(),
           }));
 
-          // Merge Firestore data with MockDB (preserving initial mock data if no Firestore data exists yet)
-          // For a true "production" environment, we would completely overwrite MockDB with Firestore data.
-          // However, to ensure demo data doesn't completely disappear until edited, we merge by ID.
           const currentDb = MockDB.get();
-          const currentCollectionData = (currentDb[colName] as any[]) || [];
-
-          // Create a map of firestore items for quick lookup
-          const firestoreMap = new Map(firestoreData.map(item => [item.id || item.uid, item]));
-
-          // Find items that are ONLY in mock data (e.g. initial hardcoded items not yet in Firestore)
-          const mockOnlyItems = currentCollectionData.filter(
-            item => !firestoreMap.has(item.id) && !firestoreMap.has(item.uid)
-          );
-
-          // The final merged collection favors Firestore data
-          const mergedData = [...mockOnlyItems, ...firestoreData];
-
-          // Update MockDB silently, then dispatch the global update event
-          (currentDb[colName] as any[]) = mergedData;
+          
+          // Pure Firestore mirror: No merging with local mock data.
+          // This completely prevents ghost data and deleted items reappearing.
+          (currentDb[colName] as any[]) = firestoreData;
+          
           MockDB.set(currentDb);
         },
         (error) => {

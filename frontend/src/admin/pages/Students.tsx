@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, MoreVertical, X, CheckCircle, Ban } from 'lucide-react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
+import { FirestoreDBService }
+from '../../services/FirestoreDBService';
 import { FirestoreStudentService } from '../../services/FirestoreStudentService';
 
 function whatsAppLink(phone: string, message: string): string {
@@ -103,6 +105,7 @@ export default function Students() {
         MockDB.updateItem('batches', targetBatch.id, {
           studentIds: [...studentIds, selectedStudent.id],
         });
+        FirestoreDBService.upsert('batches', targetBatch.id, { studentIds: [...studentIds, selectedStudent.id] }).catch(console.error);
       }
     }
 
@@ -110,9 +113,11 @@ export default function Students() {
     if (selectedStudent.batch && selectedStudent.batch !== editBatch) {
       const oldBatch = currentDB.batches.find((b: any) => b.name === selectedStudent.batch);
       if (oldBatch) {
+        const updatedOldStudentIds = (oldBatch.studentIds || []).filter((id: string) => id !== selectedStudent.id);
         MockDB.updateItem('batches', oldBatch.id, {
-          studentIds: (oldBatch.studentIds || []).filter((id: string) => id !== selectedStudent.id),
+          studentIds: updatedOldStudentIds,
         });
+        FirestoreDBService.upsert('batches', oldBatch.id, { studentIds: updatedOldStudentIds }).catch(console.error);
       }
     }
 

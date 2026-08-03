@@ -749,6 +749,7 @@ function StudyMaterialsTab({ batchId }: { batchId: string }) {
       } else {
         const newMat = {
           ...matData,
+          id: `mat-${Date.now()}`,
           batchId,
           uploadDate: new Date().toISOString().split('T')[0],
           createdAt: new Date().toISOString(),
