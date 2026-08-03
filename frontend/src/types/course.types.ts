@@ -42,6 +42,7 @@ export interface Batch {
   maxStudents: number;
   startDate: string;
   status: 'Upcoming' | 'Ongoing' | 'Completed';
+  externalReviewLink?: string;
   studentIds?: string[];
 }
 

@@ -21,32 +21,37 @@ export interface Notification {
   title: string;
   message: string;
   date: string;
-  type: 'info' | 'alert' | 'success';
+  type: 'info' | 'alert' | 'success' | 'review_request';
   target: 'Everyone' | 'Students' | 'Mentors' | 'Batch' | 'Course' | 'Specific Student';
   targetId?: string;
   visibilitySettings?: { mode: 'All' | 'Selected'; studentIds?: string[] };
   isFeedbackRequest?: boolean;
 }
 
-export interface DoubtTicket {
+export interface Doubt {
   id: string;
   studentId: string;
   studentName?: string;
-  batchId?: string;
-  subject: string;
-  description: string;
-  status: 'Pending' | 'Answered' | 'Closed';
-  date: string;
-  responses?: DoubtResponse[];
+  batchId: string;
+  courseId: string;
+  mentorId: string;
+  topic: string;
+  title: string;
+  question: string;
+  priority: 'Low' | 'Medium' | 'High';
+  status: 'Open' | 'Answered' | 'Need More Information' | 'Closed';
+  createdAt: string;
+  updatedAt?: string;
 }
 
-export interface DoubtResponse {
+export interface DoubtReply {
   id: string;
+  doubtId: string;
   authorId: string;
   authorName: string;
-  role: 'student' | 'admin' | 'mentor';
-  message: string;
-  date: string;
+  authorRole: 'student' | 'admin' | 'mentor';
+  content: string;
+  createdAt: string;
 }
 
 export interface SystemEvent {

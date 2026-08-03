@@ -458,44 +458,41 @@ function OverviewTab({ batchId }: { batchId: string }) {
 function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
   const db = useDB();
   const batch = db.batches?.find(b => b.id === batchId);
+  const [editingExternalLink, setEditingExternalLink] = useState(false);
+  const [externalLink, setExternalLink] = useState(batch?.externalReviewLink || '');
   
   // Reviews for this batch
   const batchReviews = (db.reviews || []).filter((r: any) => r.batchId === batchId);
   
+  const approvedReviews = batchReviews.filter(r => r.status === 'Approved');
+  const avgOverall = approvedReviews.length > 0 ? (approvedReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / approvedReviews.length).toFixed(1) : '0.0';
+  
   const handleSendReviewRequest = () => {
-    const existingRequest = db.notifications?.find((n: any) => 
-      (n.batchId === batchId || n.targetId === batchId) && (n.type === 'review_request' || n.isFeedbackRequest)
-    );
-    if (existingRequest) {
-      alert("A review request is already active for this batch.");
+    // Send to all active students in batch
+    const activeStudents = db.students?.filter(s => s.status === 'Active' && (batch?.studentIds?.includes(s.id) || s.batch === batch?.name));
+    
+    if (activeStudents?.length === 0) {
+      alert("No active students found in this batch.");
       return;
     }
-
+    
+    // Create one notification targeting this batch (Student Portal resolves target === 'Batch' & targetId === activeBatch.id)
     MockDB.addItem('notifications', {
       notificationId: `notif-${Date.now()}`,
       type: 'review_request',
-      recipientType: 'all',
-      recipientIds: [],
-      batchId: batchId,
-      title: "Course Feedback Requested",
-      message: "Your batch has requested course feedback. Please share your rating and review.",
-      relatedEntityType: 'batch',
-      relatedEntityId: batchId,
-      createdAt: new Date().toISOString(),
-      readBy: [],
-      // Backward compatibility fields
       target: 'Batch',
       targetId: batchId,
-      isFeedbackRequest: true,
-      date: new Date().toISOString().split('T')[0]
+      title: "Course Feedback Requested",
+      message: "Please share your learning experience.",
+      date: new Date().toISOString().split('T')[0],
+      isFeedbackRequest: true
     });
-    alert("Review request sent to all students in this batch.");
+    alert(`Review request sent to ${activeStudents?.length || 0} active students.`);
   };
 
-  const handleCopyReviewLink = () => {
-    const link = `${window.location.origin}/student/dashboard?reviewBatchId=${batchId}`;
-    navigator.clipboard.writeText(link);
-    alert("Review link copied to clipboard!");
+  const handleSaveExternalLink = () => {
+    MockDB.updateItem('batches', batchId, { externalReviewLink: externalLink });
+    setEditingExternalLink(false);
   };
 
   const handleApprove = (reviewId: string) => {
@@ -508,24 +505,55 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h3 className="text-lg font-bold text-slate-800">Reviews & Feedback</h3>
           <p className="text-sm text-slate-500 mt-1">Manage student feedback and reviews for this batch.</p>
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={handleCopyReviewLink}
-            className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
-          >
-            Copy Review Link
-          </button>
-          <button 
             onClick={handleSendReviewRequest}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
           >
             <MessageSquare className="w-4 h-4" /> Send Review Request
           </button>
+        </div>
+      </div>
+      
+      {/* Stats and External Link Config */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Average Rating</p>
+            <p className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <Star className="w-6 h-6 text-yellow-400 fill-current" /> {avgOverall}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Total Reviews</p>
+            <p className="text-xl font-bold text-slate-800">{batchReviews.length}</p>
+          </div>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">External Review Link</p>
+            {!editingExternalLink ? (
+              <button onClick={() => setEditingExternalLink(true)} className="text-xs text-indigo-600 font-bold hover:underline">Edit</button>
+            ) : (
+              <button onClick={handleSaveExternalLink} className="text-xs text-green-600 font-bold hover:underline">Save</button>
+            )}
+          </div>
+          {editingExternalLink ? (
+            <input 
+              type="text" 
+              value={externalLink} 
+              onChange={e => setExternalLink(e.target.value)}
+              placeholder="https://forms.google.com/..." 
+              className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:border-indigo-500"
+            />
+          ) : (
+            <p className="text-sm text-slate-700 truncate">{batch?.externalReviewLink || "Not configured. Using in-app review form."}</p>
+          )}
         </div>
       </div>
 
@@ -546,7 +574,7 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
                   </div>
                   <div>
                     <p className="font-bold text-slate-800 text-sm">{review.name || review.studentName || 'Student'}</p>
-                    <p className="text-xs text-slate-400">{review.date} â€¢ {review.course}</p>
+                    <p className="text-xs text-slate-400">{review.date || review.createdAt || ''} &bull; {review.course}</p>
                   </div>
                   <span className={`ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
                     review.status === 'Approved' ? 'bg-green-100 text-green-700' :
@@ -556,21 +584,22 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
                     {review.status || 'Pending'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 mb-1">
-                  {[1,2,3,4,5].map(star => (
-                    <Star key={star} className={`w-3.5 h-3.5 ${star <= (review.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-200'}`} />
+                <div className="flex items-center gap-1 mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-3.5 h-3.5 ${i < (review.rating || 5) ? 'text-amber-400 fill-current' : 'text-slate-200'}`} />
                   ))}
+                  <span className="text-xs font-bold text-slate-600 ml-2">{review.rating || 5}/5</span>
                 </div>
-                <p className="text-sm text-slate-600">{review.content || review.text}</p>
+                <p className="text-sm text-slate-700 line-clamp-3 leading-relaxed">{review.feedback || review.content || review.text || review.review}</p>
               </div>
-              <div className="flex sm:flex-col gap-2 shrink-0">
+              <div className="flex sm:flex-col gap-2 justify-end sm:justify-start shrink-0">
                 {review.status !== 'Approved' && (
-                  <button onClick={() => handleApprove(review.id)} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-colors">
+                  <button onClick={() => handleApprove(review.id)} className="px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-bold transition-colors">
                     Approve
                   </button>
                 )}
                 {review.status !== 'Rejected' && (
-                  <button onClick={() => handleReject(review.id)} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg transition-colors">
+                  <button onClick={() => handleReject(review.id)} className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-bold transition-colors">
                     Reject
                   </button>
                 )}
@@ -1387,31 +1416,41 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
   const handleReplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedDoubt) return;
+    const now = new Date().toISOString();
+    const replyId = `reply-${Date.now()}`;
+
+    const newReply = {
+      id: replyId,
+      doubtId: selectedDoubt.id,
+      authorId: 'admin',
+      authorName: 'Admin',
+      authorRole: 'admin',
+      author: 'Admin',
+      content: replyText,
+      text: replyText,
+      createdAt: now,
+      date: now,
+    };
+
+    // Write to doubtReplies collection (Firestore-ready)
+    MockDB.addItem('doubtReplies', newReply);
 
     MockDB.updateItem('doubts', selectedDoubt.id, {
-      ...selectedDoubt,
-      replies: [...(selectedDoubt.replies || []), { text: replyText, author: 'Admin', date: new Date().toISOString() }],
+      replies: [...(selectedDoubt.replies || []), newReply],
       status: 'Answered',
-      updatedAt: new Date().toISOString()
+      updatedAt: now,
     });
     
-    // Add unified notification for the student
+    // Notify student
     MockDB.addItem('notifications', {
-      notificationId: `notif-${Date.now()}`,
-      type: 'doubt_reply',
-      recipientType: 'student',
-      recipientIds: [selectedDoubt.studentUid || selectedDoubt.studentId],
-      batchId: batchId || selectedDoubt.batchId || '',
-      title: "New Reply to Your Doubt",
-      message: `A mentor replied to your doubt: "${selectedDoubt.title || selectedDoubt.subject}"`,
-      relatedEntityType: 'doubt',
-      relatedEntityId: selectedDoubt.id,
-      createdAt: new Date().toISOString(),
-      readBy: [],
-      // Legacy fields
+      id: `notif-${Date.now()}`,
+      type: 'info',
       target: 'Specific Student',
-      targetId: selectedDoubt.studentUid || selectedDoubt.studentId,
-      date: new Date().toISOString().split('T')[0]
+      targetId: selectedDoubt.studentId,
+      title: 'Reply to Your Doubt',
+      message: `Admin replied to your doubt: "${selectedDoubt.title || selectedDoubt.subject}"`,
+      date: now.split('T')[0],
+      createdAt: now,
     });
     
     setReplyText('');
@@ -1422,7 +1461,7 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
   const handleUpdateStatus = (id: string, status: string) => {
     MockDB.updateItem('doubts', id, { status, updatedAt: new Date().toISOString() });
     if (selectedDoubt?.id === id) {
-      setSelectedDoubt({ ...selectedDoubt, status });
+      setSelectedDoubt((prev: any) => ({ ...prev, status }));
     }
   };
 
@@ -1475,6 +1514,7 @@ function DoubtSupportTab({ batchId }: { batchId: string }) {
           <option value="Open">Mark Open</option>
           <option value="Pending">Mark Pending</option>
           <option value="Answered">Mark Answered</option>
+          <option value="Need More Information">Need More Info</option>
           <option value="Closed">Mark Closed</option>
         </select>
       </div>

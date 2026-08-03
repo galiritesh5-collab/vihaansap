@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import re
+
+content = '''import React, { useState } from 'react';
 import { X, Star, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockDB } from '../../services/MockDB';
 
 export default function CourseRatingModal({ batch, course, onClose, isMandatory }: any) {
   const { studentProfile, currentUser } = useAuth();
-
+  
   // External link override
   const hasExternalLink = !!batch?.externalReviewLink;
 
@@ -17,11 +19,12 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   const [designation, setDesignation] = useState('');
   const [company, setCompany] = useState('');
   const [recommend, setRecommend] = useState(true);
+  
   const [submitted, setSubmitted] = useState(false);
 
   const handleDismiss = () => {
     if (batch?.id) {
-      sessionStorage.setItem(`review_dismissed_${batch.id}`, 'true');
+      sessionStorage.setItem(eview_dismissed_, 'true');
     }
     if (onClose) onClose();
   };
@@ -34,12 +37,11 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const now = new Date().toISOString();
-    const reviewId = `rev-${Date.now()}`;
-
+    
     // ONE canonical review record
     const review = {
-      id: reviewId,
-      reviewId: reviewId,
+      id: ev-,
+      reviewId: ev-,
       studentUid: currentUser?.uid || studentProfile?.id,
       studentName: studentProfile?.name || currentUser?.displayName || 'Student',
       batchId: batch?.id || '',
@@ -58,22 +60,20 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
       createdAt: now,
       updatedAt: now,
       // Backward compatibility fields for old queries:
-      name: studentProfile?.name || currentUser?.displayName || 'Student',
       student: studentProfile?.name || currentUser?.displayName || 'Student',
       course: course?.name || '',
       review: comments,
-      content: comments,
-      date: now,
+      date: now
     };
-
+    
     MockDB.addItem('reviews', review);
-
+    
     setSubmitted(true);
     if (onClose) setTimeout(onClose, 2000);
     if (isMandatory) setTimeout(() => window.location.reload(), 2000);
   };
 
-  const StarSelector = ({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) => (
+  const StarSelector = ({ value, onChange, label }: any) => (
     <div className="flex flex-col">
       <label className="text-xs font-bold text-slate-700 mb-1">{label}</label>
       <div className="flex gap-1">
@@ -82,11 +82,9 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
             key={star}
             type="button"
             onClick={() => onChange(star)}
-            className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
-              value >= star ? 'bg-orange-100 text-orange-500' : 'bg-slate-50 text-slate-300 hover:bg-slate-100'
-            }`}
+            className={w-8 h-8 rounded-md flex items-center justify-center transition-colors }
           >
-            <Star className={`w-5 h-5 ${value >= star ? 'fill-current' : ''}`} />
+            <Star className={w-5 h-5 } />
           </button>
         ))}
       </div>
@@ -94,14 +92,14 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 relative">
         {!isMandatory && (
           <button onClick={handleDismiss} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10">
             <X className="w-5 h-5" />
           </button>
         )}
-
+        
         <div className="p-6 sm:p-8">
           {submitted ? (
             <div className="text-center py-8">
@@ -112,30 +110,27 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
               <p className="text-slate-500 mt-2">Your comprehensive review has been submitted for approval.</p>
             </div>
           ) : hasExternalLink ? (
-            <div className="text-center py-8 space-y-6">
-              <h3 className="text-xl font-bold text-slate-800">{isMandatory ? 'Feedback Required' : 'Rate Your Course'}</h3>
-              <p className="text-sm text-slate-500 font-medium">
-                Please provide your feedback for {course?.name} via our external review form.
-              </p>
-              <button
-                onClick={handleExternalRedirect}
-                className="w-full sm:w-auto px-8 py-3 bg-[#1763B6] text-white font-bold rounded-xl hover:bg-[#145096] transition-colors inline-flex items-center justify-center gap-2"
-              >
-                Go to Review Form <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
+             <div className="text-center py-8 space-y-6">
+                <h3 className="text-xl font-bold text-slate-800">{isMandatory ? 'Feedback Required' : 'Rate Your Course'}</h3>
+                <p className="text-sm text-slate-500 font-medium">Please provide your feedback on {course?.name} via our external review form.</p>
+                <button
+                  onClick={handleExternalRedirect}
+                  className="w-full sm:w-auto px-8 py-3 bg-[#1763B6] text-white font-bold rounded-xl hover:bg-[#145096] transition-colors inline-flex items-center justify-center gap-2"
+                >
+                  Go to Review Form <ExternalLink className="w-4 h-4" />
+                </button>
+             </div>
           ) : (
             <>
-              <h3 className="text-xl font-bold text-slate-800 mb-1">
-                {isMandatory ? 'Feedback Required' : 'Rate Your Course'}
-              </h3>
+              <h3 className="text-xl font-bold text-slate-800 mb-1">{isMandatory ? 'Feedback Required' : 'Rate Your Course'}</h3>
               <p className="text-sm text-slate-500 mb-6 font-medium">{course?.name}</p>
-
+              
               <form onSubmit={handleSubmit} className="space-y-5">
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <StarSelector value={rating} onChange={setRating} label="Overall Rating" />
                   <StarSelector value={trainerRating} onChange={setTrainerRating} label="Trainer Rating" />
-                  <StarSelector value={contentRating} onChange={setContentRating} label="Course Content" />
+                  <StarSelector value={contentRating} onChange={setContentRating} label="Course Content Rating" />
                   <StarSelector value={supportRating} onChange={setSupportRating} label="Support Rating" />
                 </div>
 
@@ -148,9 +143,9 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
                     onChange={e => setComments(e.target.value)}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-colors resize-none text-sm"
                     placeholder="Share your detailed learning experience..."
-                  />
+                  ></textarea>
                 </div>
-
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Designation</label>
@@ -179,7 +174,7 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
                     type="checkbox"
                     id="recommend-cb"
                     checked={recommend}
-                    onChange={e => setRecommend(e.target.checked)}
+                    onChange={(e) => setRecommend(e.target.checked)}
                     className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <label htmlFor="recommend-cb" className="text-sm font-semibold text-slate-700">
@@ -202,3 +197,7 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
     </div>
   );
 }
+'''
+
+with open('frontend/src/student/pages/CourseRatingModal.tsx', 'w') as f:
+    f.write(content)

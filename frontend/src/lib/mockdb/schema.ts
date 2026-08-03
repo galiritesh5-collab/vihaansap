@@ -29,6 +29,7 @@ export interface DatabaseSchema {
   assignments: any[];
   payments: any[];
   doubts: any[];
+  doubtReplies: any[];
   notifications: any[];
   events: any[];
   leads: Lead[];

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
-import { Plus, Edit2, Trash2, X, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, CheckCircle, XCircle, RefreshCw, Eye, DownloadCloud } from 'lucide-react';
 
 export default function Reviews() {
   const db = useDB();
@@ -19,6 +19,48 @@ export default function Reviews() {
   // Extract unique batches for the filter dropdown
   const uniqueBatches = Array.from(new Set(db.reviews?.map((r: any) => r.batchId).filter(Boolean)));
 
+
+  
+  const [showImport, setShowImport] = useState(false);
+  const [importData, setImportData] = useState('');
+  
+  const handleImport = () => {
+    try {
+      const parsed = JSON.parse(importData);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      arr.forEach(rev => {
+        MockDB.addItem('reviews', {
+          ...rev,
+          status: 'Pending',
+          createdAt: new Date().toISOString()
+        });
+      });
+      alert(`Successfully imported ${arr.length} reviews to Pending status.`);
+      setShowImport(false);
+      setImportData('');
+    } catch (e) {
+      alert("Invalid JSON format. Please provide an array of review objects.");
+    }
+  };
+
+  const handleRequestResubmission = (review: any) => {
+    if (window.confirm('This will delete the current review and send a new request to the student. Continue?')) {
+      // 1. Delete review
+      MockDB.deleteItem('reviews', review.id);
+      // 2. Send notification to student
+      MockDB.addItem('notifications', {
+        notificationId: `notif-${Date.now()}`,
+        type: 'review_request',
+        target: 'Specific Student',
+        targetId: review.studentId || review.uid || '',
+        title: "Please Resubmit Your Feedback",
+        message: "We noticed an issue with your previous review. Could you please resubmit it?",
+        date: new Date().toISOString().split('T')[0],
+        isFeedbackRequest: true
+      });
+      alert('Resubmission requested.');
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +93,9 @@ export default function Reviews() {
           <h2 className="text-2xl font-display font-extrabold text-slate-800 tracking-tight">Reviews CMS</h2>
           <p className="text-slate-500 text-sm mt-1">Manage public student testimonials. {pendingCount > 0 && <span className="ml-2 bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">{pendingCount} Pending</span>}</p>
         </div>
+        <button onClick={() => setShowImport(true)} className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2">
+          <DownloadCloud className="w-4 h-4" /> Import Reviews
+        </button>
         <button 
           onClick={() => setEditingReview({ name: '', role: '', company: '', text: '', rating: 5, status: 'Pending', avatar: '', course: '' })}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
@@ -123,10 +168,13 @@ export default function Reviews() {
                   <button onClick={() => handleReject(review)} className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50" title="Reject">
                     <XCircle className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setEditingReview(review)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50">
+                  <button onClick={() => handleRequestResubmission(review)} className="p-2 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50" title="Request Resubmission">
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setEditingReview(review)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50" title="Edit">
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDelete(review.id)} className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50">
+                  <button onClick={() => handleDelete(review.id)} className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50" title="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
@@ -135,6 +183,33 @@ export default function Reviews() {
           </tbody>
         </table>
       </div>
+
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800">Import External Reviews</h3>
+              <button onClick={() => setShowImport(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-4">Paste review data in JSON format. They will be added as "Pending Approval".</p>
+              <textarea 
+                value={importData}
+                onChange={(e) => setImportData(e.target.value)}
+                rows={8}
+                className="w-full border border-slate-200 rounded-lg p-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder='[{"name": "John Doe", "rating": 5, "content": "Great course!"}]'
+              ></textarea>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button onClick={() => setShowImport(false)} className="px-4 py-2 font-bold text-slate-600">Cancel</button>
+              <button onClick={handleImport} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">Import Reviews</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingReview && (
         <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50">

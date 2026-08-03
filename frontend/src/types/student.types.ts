@@ -25,6 +25,11 @@ export interface StudentReview {
   module?: string;
   course: string;
   status?: 'Pending' | 'Approved' | 'Rejected';
+  trainerRating?: number;
+  contentRating?: number;
+  supportRating?: number;
+  recommend?: boolean;
+  batchId?: string;
   // Additional properties for backward compatibility with older review objects
   student?: string;
   studentName?: string;

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db as firestoreDb } from '../config/firebase';
 import { isAdminEmail } from '../config/adminConfig';
 import { MockDB } from '../services/MockDB';
@@ -25,28 +25,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<'admin' | 'mentor' | 'student' | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ─── Local profile lookup (from MockDB, which is synced with Firestore) ──
-  const fetchStudentProfile = (uid: string) => {
-    const students = MockDB.getCollection('students');
-    const profile = students.find((s: any) => s.uid === uid) || null;
-    setStudentProfile(profile);
-    return profile;
+  // Ref to hold the unsubscribe function for the per-student Firestore listener.
+  // Using a ref (not state) so updates don't trigger re-renders.
+  const unsubStudentSnapshot = useRef<(() => void) | null>(null);
+
+  // ─── Subscribe to the student's own Firestore document (live) ─────────────
+  // This is the ONLY mechanism that updates studentProfile after initial load.
+  // It replaces the old db_updated → MockDB → fetchStudentProfile chain.
+  const subscribeToStudentDoc = (uid: string) => {
+    // Clean up any previous listener first
+    if (unsubStudentSnapshot.current) {
+      unsubStudentSnapshot.current();
+      unsubStudentSnapshot.current = null;
+    }
+
+    if (!firestoreDb) return;
+
+    const ref = doc(firestoreDb, 'students', uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (snap.exists()) {
+          setStudentProfile({ id: snap.id, ...snap.data() });
+        } else {
+          // Document was deleted — clear the profile
+          setStudentProfile(null);
+        }
+      },
+      (err) => {
+        console.error('[AuthContext] Student doc snapshot error:', err);
+      }
+    );
+
+    unsubStudentSnapshot.current = unsub;
   };
 
-  const refreshProfile = async () => {
-    if (currentUser) {
-      // Fetch directly from Firestore to avoid MockDB cache staleness
-      try {
-        const profile = await FirestoreStudentService.getStudent(currentUser.uid);
-        if (profile) {
-          setStudentProfile(profile);
-          return;
-        }
-      } catch (err) {
-        console.error('[AuthContext] refreshProfile Firestore error:', err);
+  // ─── refreshProfile: re-fetches from Firestore directly ───────────────────
+  // Used by CompleteProfile page after saving profile data.
+  // The onSnapshot above will also fire automatically when Firestore updates,
+  // so this is just an explicit force-refresh for immediate UI feedback.
+  const refreshProfile = async (): Promise<void> => {
+    if (!currentUser) return;
+    try {
+      const profile = await FirestoreStudentService.getStudent(currentUser.uid);
+      if (profile) {
+        setStudentProfile(profile);
       }
-      // Fallback to MockDB
-      fetchStudentProfile(currentUser.uid);
+    } catch (err) {
+      console.error('[AuthContext] refreshProfile error:', err);
     }
   };
 
@@ -60,28 +86,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Auth persistence error:', error);
     });
 
-    // ── Defer Firestore real-time listener for the entire students collection ──
-    // We only subscribe if the user is authenticated to save initial load bandwidth.
+    // Track the Firestore collection listener (shared across all collections)
     let unsubFirestore: (() => void) | undefined;
 
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      // Must set loading to true while we fetch roles so ProtectedRoutes don't incorrectly block access
       setLoading(true);
       setCurrentUser(user);
 
       if (user) {
+        // Start collection-level Firestore listeners (courses, batches, etc.)
         if (!unsubFirestore) {
           unsubFirestore = FirestoreStudentService.subscribeToAll();
           FirestoreDBService.subscribeToAll();
         }
+
         let role: 'admin' | 'mentor' | 'student' = 'student';
 
-        // ── Fast path: Admin email check (no network needed) ──────────────────
+        // ── Fast path: Admin email check (no network needed) ──────────────
         if (isAdminEmail(user.email)) {
           console.log(`[AuthContext] Admin access granted for ${user.email} (email-based)`);
           role = 'admin';
         } else {
-          // ── Backend role lookup for student / mentor ─────────────────────────
+          // ── Backend role lookup for student / mentor ───────────────────
           try {
             const token = await user.getIdToken();
             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -107,17 +133,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (role === 'admin') {
           await MockDB.loadAdminData();
-        }
-
-        if (role === 'student') {
-          // ── Firestore: check/create the student document ──────────────────
-          let firestoreProfile: any = null;
+          // Clean up any leftover student listener from a previous session
+          if (unsubStudentSnapshot.current) {
+            unsubStudentSnapshot.current();
+            unsubStudentSnapshot.current = null;
+          }
+          setStudentProfile(null);
+          setLoading(false);
+        } else if (role === 'student') {
+          // ── Firestore: check/create the student document ───────────────
           try {
             const existing = await FirestoreStudentService.getStudent(user.uid);
 
             if (!existing) {
-              // First ever login — create a minimal document so the student
-              // shows up in the Admin Students list immediately.
+              // First ever login — create a minimal document
               const newStudentData = {
                 uid: user.uid,
                 name: user.displayName || '',
@@ -132,86 +161,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 loginCount: 1,
               };
 
-              // 1. Save to Firestore
               await FirestoreStudentService.upsertStudent(user.uid, newStudentData);
 
-              // 2. Save to MockDB immediately (hits backend API) so it shows in Admin Students
-              const mockStudent = {
-                id: user.uid,
-                ...newStudentData,
-                role: 'Student'
-              };
-              await MockDB.addItem('students', mockStudent);
+              // Also add to backend/db.json so Admin Students page sees the new student
+              await MockDB.addItem('students', { id: user.uid, ...newStudentData, role: 'Student' });
 
-              // Use the new profile directly (profileCompleted = false → will show CompleteProfile)
-              firestoreProfile = { id: user.uid, ...newStudentData };
+              // Set profile immediately (profileCompleted = false → CompleteProfile will show)
+              setStudentProfile({ id: user.uid, ...newStudentData });
             } else {
-              // Returning login — update lastLogin in Firestore
-              await FirestoreStudentService.recordLogin(user.uid);
+              // Returning student — set profile immediately from the fetched doc
+              setStudentProfile(existing);
 
-              // Use the Firestore document directly as the profile — no race condition
-              firestoreProfile = existing;
-
-              // Also sync to MockDB in the background (non-blocking)
-              const currentStudents = MockDB.getCollection('students') || [];
-              const mockStudent = currentStudents.find((s: any) => s.uid === user.uid);
-              if (mockStudent) {
-                MockDB.updateItem('students', mockStudent.id, {
-                  lastLogin: new Date().toISOString(),
-                  loginCount: (mockStudent.loginCount || 0) + 1,
-                }).catch(console.error);
-              } else {
-                // If somehow missing in MockDB/db.json but exists in Firestore
-                MockDB.addItem('students', {
-                  id: user.uid,
-                  ...existing,
-                  role: 'Student',
-                  lastLogin: new Date().toISOString(),
-                  loginCount: (existing.loginCount || 0) + 1,
-                }).catch(console.error);
-              }
+              // Update lastLogin in the background (non-blocking)
+              FirestoreStudentService.recordLogin(user.uid).catch(console.error);
             }
           } catch (err) {
             console.error('[AuthContext] Firestore student sync error:', err);
           }
 
-          // ── Set profile IMMEDIATELY from the Firestore document ──────────
-          // This eliminates the race condition where MockDB hasn't been
-          // populated yet by the onSnapshot listener on page refresh.
-          if (firestoreProfile) {
-            setStudentProfile(firestoreProfile);
-          } else {
-            // Fallback: try MockDB (it may have been populated by now)
-            fetchStudentProfile(user.uid);
-          }
+          // ── Subscribe to live updates for this student's Firestore doc ──
+          // This keeps studentProfile in sync if an Admin updates the student's
+          // course/batch/status in the Admin portal, without touching MockDB.
+          subscribeToStudentDoc(user.uid);
+
           setLoading(false);
         } else {
-           // Admin or Mentor role doesn't use studentProfile
-           setStudentProfile(null);
-           setLoading(false);
+          // Mentor role — no studentProfile needed
+          if (unsubStudentSnapshot.current) {
+            unsubStudentSnapshot.current();
+            unsubStudentSnapshot.current = null;
+          }
+          setStudentProfile(null);
+          setLoading(false);
         }
       } else {
-        // No user signed in
+        // User signed out — clean up student listener and clear all state
+        if (unsubStudentSnapshot.current) {
+          unsubStudentSnapshot.current();
+          unsubStudentSnapshot.current = null;
+        }
         setStudentProfile(null);
         setUserRole(null);
         setLoading(false);
       }
     });
 
-    // Listen to MockDB changes so the profile updates when Firestore snapshot arrives
-    const handleDbUpdate = () => {
-      if (auth?.currentUser) {
-        fetchStudentProfile(auth.currentUser.uid);
-      }
-    };
-    window.addEventListener('db_updated', handleDbUpdate);
-
     return () => {
       unsubAuth();
       if (unsubFirestore) {
         unsubFirestore();
       }
-      window.removeEventListener('db_updated', handleDbUpdate);
+      // Clean up per-student snapshot listener
+      if (unsubStudentSnapshot.current) {
+        unsubStudentSnapshot.current();
+        unsubStudentSnapshot.current = null;
+      }
     };
   }, []);
 

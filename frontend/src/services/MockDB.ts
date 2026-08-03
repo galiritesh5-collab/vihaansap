@@ -22,6 +22,7 @@ const initialData: DatabaseSchema = {
   assignments: [],
   payments: [],
   doubts: [],
+  doubtReplies: [],
   notifications: [],
   events: [],
   leads: [],
@@ -42,6 +43,7 @@ let isSynced = false;
 
 import { auth, db as firestoreDb } from '../config/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { FirestoreDBService } from './FirestoreDBService';
 
 // Get auth token (works for admin, mentor, student since all use Firebase Auth)
 const getHeaders = async () => {
@@ -116,6 +118,7 @@ export class MockDB {
     this.set(db);
   }
 
+  
   static async addItem(collection: keyof DatabaseSchema, item: any) {
     item.id = item.id || Math.random().toString(36).substr(2, 9);
     // Optimistic UI update
@@ -123,23 +126,16 @@ export class MockDB {
     (db[collection] as any[]).push(item);
     this.set(db);
 
-    // Public forms use narrowly scoped backend endpoints. CMS writes remain admin-only.
+    // Instead of relying on backend REST endpoints (which are admin-only), 
+    // directly write to Firestore using client SDK. This ensures no MockDB isolation.
     try {
-      const publicType = collection === 'leads'
-        ? 'leads'
-        : collection === 'serverEnquiries'
-          ? 'server-enquiries'
-          : null;
-      await fetch(publicType ? `${API_URL}/public/${publicType}` : `${API_URL}/db/${String(collection)}`, {
-        method: 'POST',
-        headers: publicType ? { 'Content-Type': 'application/json' } : await getHeaders(),
-        body: JSON.stringify(item)
-      });
+      await FirestoreDBService.upsert(collection, item.id, item);
     } catch (err) {
-      console.warn('Backend not reachable for addItem');
+      console.warn('Failed to sync addItem to Firestore:', err);
     }
   }
 
+  
   static async updateItem(collection: keyof DatabaseSchema, id: string, item: any) {
     // Optimistic UI update
     const db = this.get();
@@ -149,32 +145,24 @@ export class MockDB {
       this.set(db);
     }
 
-    // Backend update (now handled by Firebase Admin SDK on the server)
     try {
-      await fetch(`${API_URL}/db/${String(collection)}/${id}`, {
-        method: 'PUT',
-        headers: await getHeaders(),
-        body: JSON.stringify(item)
-      });
+      await FirestoreDBService.upsert(collection, id, item);
     } catch (err) {
-      console.warn('Backend not reachable for updateItem');
+      console.warn('Failed to sync updateItem to Firestore:', err);
     }
   }
 
+  
   static async deleteItem(collection: keyof DatabaseSchema, id: string) {
     // Optimistic UI update
     const db = this.get();
     (db[collection] as any[]) = (db[collection] as any[]).filter(i => (i.id !== id && i.uid !== id));
     this.set(db);
 
-    // Backend update (now handled by Firebase Admin SDK on the server)
     try {
-      await fetch(`${API_URL}/db/${String(collection)}/${id}`, {
-        method: 'DELETE',
-        headers: await getHeaders()
-      });
+      await FirestoreDBService.delete(collection, id);
     } catch (err) {
-      console.warn('Backend not reachable for deleteItem');
+      console.warn('Failed to sync deleteItem to Firestore:', err);
     }
   }
 }

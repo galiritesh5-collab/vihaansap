@@ -33,6 +33,7 @@ const COLLECTIONS_TO_SYNC: (keyof DatabaseSchema)[] = [
   'assignments',
   'payments',
   'doubts',
+  'doubtReplies',
   'notifications',
   'events',
   'leads',
