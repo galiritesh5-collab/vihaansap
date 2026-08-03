@@ -70,7 +70,7 @@ export default function Students() {
   const handleUpdateStatus = async (id: string, status: string) => {
     await MockDB.updateItem('students', id, { status });
     // Also persist to Firestore using the student's uid
-    const student = MockDB.getCollection('students').find((s: any) => s.id === id);
+    const student = db.students.find((s: any) => s.id === id);
     if (student?.uid) {
       FirestoreStudentService.updateStudent(student.uid, { status }).catch(console.error);
     }
