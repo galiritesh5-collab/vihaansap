@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Star, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { MockDB } from '../../services/MockDB';
 
 export default function CourseRatingModal({ batch, course, onClose, isMandatory }: any) {
@@ -9,10 +10,17 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   // External link override
   const hasExternalLink = !!batch?.externalReviewLink;
 
+  const { enrolledBatches } = useActiveBatch();
+  
+  // Use passed batch/course as initial, or default to first enrolled batch
+  const initialBatchId = batch?.id || (enrolledBatches.length > 0 ? enrolledBatches[0].id : '');
+  const [selectedBatchId, setSelectedBatchId] = useState(initialBatchId);
+
+  // Derived selected batch/course
+  const currentBatch = enrolledBatches.find(b => b.id === selectedBatchId) || batch;
+  const currentCourseName = currentBatch?.course || course?.name || '';
+
   const [rating, setRating] = useState(0);
-  const [trainerRating, setTrainerRating] = useState(0);
-  const [contentRating, setContentRating] = useState(0);
-  const [supportRating, setSupportRating] = useState(0);
   const [comments, setComments] = useState('');
   const [designation, setDesignation] = useState('');
   const [company, setCompany] = useState('');
@@ -42,14 +50,11 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
       reviewId: reviewId,
       studentUid: currentUser?.uid || studentProfile?.id,
       studentName: studentProfile?.name || currentUser?.displayName || 'Student',
-      batchId: batch?.id || '',
-      batchName: batch?.name || '',
-      courseId: course?.id || '',
-      courseName: course?.name || '',
+      batchId: currentBatch?.id || '',
+      batchName: currentBatch?.name || '',
+      courseId: currentBatch?.courseId || course?.id || '',
+      courseName: currentCourseName,
       rating,
-      trainerRating,
-      contentRating,
-      supportRating,
       feedback: comments,
       designation: designation.trim() || undefined,
       company: company.trim() || undefined,
@@ -60,7 +65,7 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
       // Backward compatibility fields for old queries:
       name: studentProfile?.name || currentUser?.displayName || 'Student',
       student: studentProfile?.name || currentUser?.displayName || 'Student',
-      course: course?.name || '',
+      course: currentCourseName,
       review: comments,
       content: comments,
       date: now,
@@ -129,14 +134,26 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
               <h3 className="text-xl font-bold text-slate-800 mb-1">
                 {isMandatory ? 'Feedback Required' : 'Rate Your Course'}
               </h3>
-              <p className="text-sm text-slate-500 mb-6 font-medium">{course?.name}</p>
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-slate-700 mb-1">Course</label>
+                <select
+                  value={selectedBatchId}
+                  onChange={e => setSelectedBatchId(e.target.value)}
+                  disabled={!!batch || enrolledBatches.length === 0}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1763B6] bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-75"
+                >
+                  {batch && !enrolledBatches.find(b => b.id === batch.id) && (
+                     <option value={batch.id}>{course?.name}</option>
+                  )}
+                  {enrolledBatches.map(b => (
+                    <option key={b.id} value={b.id}>{b.course}</option>
+                  ))}
+                </select>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex justify-center mb-2">
                   <StarSelector value={rating} onChange={setRating} label="Overall Rating" />
-                  <StarSelector value={trainerRating} onChange={setTrainerRating} label="Trainer Rating" />
-                  <StarSelector value={contentRating} onChange={setContentRating} label="Course Content" />
-                  <StarSelector value={supportRating} onChange={setSupportRating} label="Support Rating" />
                 </div>
 
                 <div>
@@ -189,7 +206,7 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
 
                 <button
                   type="submit"
-                  disabled={rating === 0 || trainerRating === 0 || contentRating === 0 || supportRating === 0 || !comments}
+                  disabled={rating === 0 || !comments}
                   className="w-full py-3 mt-4 bg-[#1763B6] text-white font-bold rounded-xl hover:bg-[#145096] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Submit Review

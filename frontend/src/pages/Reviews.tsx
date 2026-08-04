@@ -10,20 +10,20 @@ export default function Reviews() {
   const averageRating = approvedReviews.length > 0 ? approvedReviews.reduce((sum, r) => sum + (r.rating || 5), 0) / approvedReviews.length : 0;
 
   return (
-    <div id="reviews-page-wrapper" className="space-y-12 pb-16 bg-slate-50/30 min-h-screen">
+    <div id="reviews-page-wrapper" className="space-y-6 pb-16 bg-slate-50/30 min-h-screen">
       
       {/* Header section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20" id="reviews-header">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" id="reviews-header">
         <div className="text-center space-y-4 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1763B6]/10 text-[#1763B6] text-xs font-bold uppercase tracking-wider">
             <Star className="w-3.5 h-3.5 fill-[#1763B6]" />
             Student Success Stories
           </div>
           <h1 className="font-display font-extrabold text-3xl md:text-5xl text-slate-850 tracking-tight leading-tight">
-            Real Reviews From <br className="hidden md:block" /> Real Professionals
+            Success Stories From <br className="hidden md:block" /> Our Students
           </h1>
           <p className="text-slate-500 text-sm sm:text-base leading-relaxed">
-            See how our tailored SAP education paths transformed these candidates into successful enterprise architects and key operational engineers globally.
+            Every review on this page is submitted by verified Sri Vihaan SAP learners who completed or are currently enrolled in our training programs.
           </p>
         </div>
       </section>
@@ -32,7 +32,7 @@ export default function Reviews() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="reviews-cards-wall-section">
         {approvedReviews.length > 0 ? (
           <>
-            <div className="flex flex-col items-center justify-center mb-12 space-y-2">
+            <div className="flex flex-col items-center justify-center mb-8 space-y-2">
               <div className="text-5xl font-extrabold text-slate-800">{averageRating.toFixed(1)}</div>
               <div className="flex items-center gap-1 text-[#F4A62A]">
                 {Array.from({ length: 5 }).map((_, i) => (

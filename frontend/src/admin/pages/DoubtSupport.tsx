@@ -21,13 +21,13 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   Pending: { color: 'bg-orange-100 text-orange-700', label: 'Pending' },
 };
 
-export default function DoubtSupport() {
+export default function DoubtSupport({ fixedBatchId }: { fixedBatchId?: string } = {}) {
   const { currentUser, userRole } = useAuth();
   const db = useDB();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
-  const [batchFilter, setBatchFilter] = useState('All');
+  const [batchFilter, setBatchFilter] = useState(fixedBatchId || 'All');
   const [selectedDoubt, setSelectedDoubt] = useState<any>(null);
   const [replyText, setReplyText] = useState('');
 

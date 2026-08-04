@@ -8,7 +8,7 @@ import FloatingWhatsApp from './components/FloatingWhatsApp';
 import DemoModal from './components/DemoModal';
 
 // Pages
-const Home = lazy(() => import('./pages/Home'));
+import Home from './pages/Home';
 const WhyVihaan = lazy(() => import('./pages/WhyVihaan'));
 const Courses = lazy(() => import('./pages/Courses'));
 const Reviews = lazy(() => import('./pages/Reviews'));

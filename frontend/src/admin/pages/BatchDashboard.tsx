@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, MessageSquare, Star, Settings, Plus, PlayCircle, Edit2, Trash2, HelpCircle, X, ChevronDown, CheckCircle } from 'lucide-react';
 import { MockDB } from '../../services/MockDB';
+import DoubtSupport from './DoubtSupport';
 import { useAuth } from '../../contexts/AuthContext';
 import { BatchPlannerWeek, BatchSession, StudyMaterial, CourseRating, SessionFeedback } from '../../types';
 import { enrolledStudentsForBatch } from '../../utils/recipientTargeting';
@@ -1397,160 +1398,9 @@ function NotificationsTab({ batchId }: { batchId: string }) {
 
 
 function DoubtSupportTab({ batchId }: { batchId: string }) {
-  const db = useDB();
-  const doubts = db.doubts?.filter(d => {
-    if (d.batchId !== batchId) return false;
-    const lastActive = new Date(d.updatedAt || d.createdAt || d.date || 0).getTime();
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return lastActive >= thirtyDaysAgo;
-  }).sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()) || [];
-  const [selectedDoubt, setSelectedDoubt] = useState<any>(null);
-  const [replyText, setReplyText] = useState('');
-
-  useEffect(() => {
-    if (!selectedDoubt) return;
-    const refreshed = db.doubts?.find(doubt => doubt.id === selectedDoubt.id);
-    if (refreshed) setSelectedDoubt(refreshed);
-  }, [db.doubts, selectedDoubt?.id]);
-
-  const handleReplySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replyText.trim() || !selectedDoubt) return;
-    const now = new Date().toISOString();
-    const replyId = `reply-${Date.now()}`;
-
-    const newReply = {
-      id: replyId,
-      doubtId: selectedDoubt.id,
-      authorId: 'admin',
-      authorName: 'Admin',
-      authorRole: 'admin',
-      author: 'Admin',
-      content: replyText,
-      text: replyText,
-      createdAt: now,
-      date: now,
-    };
-
-    // Write to doubtReplies collection (Firestore-ready)
-    MockDB.addItem('doubtReplies', newReply);
-
-    MockDB.updateItem('doubts', selectedDoubt.id, {
-      replies: [...(selectedDoubt.replies || []), newReply],
-      status: 'Answered',
-      updatedAt: now,
-    });
-    
-    // Notify student
-    MockDB.addItem('notifications', {
-      id: `notif-${Date.now()}`,
-      type: 'info',
-      target: 'Specific Student',
-      targetId: selectedDoubt.studentId,
-      title: 'Reply to Your Doubt',
-      message: `Admin replied to your doubt: "${selectedDoubt.title || selectedDoubt.subject}"`,
-      date: now.split('T')[0],
-      createdAt: now,
-    });
-    
-    setReplyText('');
-    const currentDB = MockDB.get();
-    setSelectedDoubt(currentDB.doubts.find((d: any) => d.id === selectedDoubt.id));
-  };
-
-  const handleUpdateStatus = (id: string, status: string) => {
-    MockDB.updateItem('doubts', id, { status, updatedAt: new Date().toISOString() });
-    if (selectedDoubt?.id === id) {
-      setSelectedDoubt((prev: any) => ({ ...prev, status }));
-    }
-  };
-
-  if (!selectedDoubt) {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-bold text-slate-800">Doubt Support</h3>
-        </div>
-        
-        <div className="divide-y divide-slate-100 bg-white rounded-xl border shadow-sm">
-          {doubts.map(d => (
-            <div key={d.id} className="p-4 hover:bg-slate-50 transition-colors">
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-bold text-slate-800">{d.title || d.subject}</h4>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${
-                  d.status === 'Pending' ? 'bg-orange-50 text-orange-600' : 
-                  d.status === 'Answered' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
-                }`}>{d.status}</span>
-              </div>
-              <p className="text-sm text-slate-600 mb-2 line-clamp-2">{d.description || d.question}</p>
-              <p className="text-xs text-slate-500">Student: {d.studentName || d.student} &bull; Date: {d.date}</p>
-              <div className="mt-4 flex justify-end">
-                <button onClick={() => setSelectedDoubt(d)} className="text-sm font-semibold text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg transition-colors">View & Reply</button>
-              </div>
-            </div>
-          ))}
-          {doubts.length === 0 && <div className="text-slate-500 py-8 text-center">No doubts reported for this batch.</div>}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-[600px] bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setSelectedDoubt(null)} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h3 className="font-bold text-slate-800">{selectedDoubt.studentName || selectedDoubt.student}</h3>
-          </div>
-        </div>
-        <select 
-          value={selectedDoubt.status}
-          onChange={e => handleUpdateStatus(selectedDoubt.id, e.target.value)}
-          className="text-xs font-bold bg-white border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none"
-        >
-          <option value="Open">Mark Open</option>
-          <option value="Pending">Mark Pending</option>
-          <option value="Answered">Mark Answered</option>
-          <option value="Need More Information">Need More Info</option>
-          <option value="Closed">Mark Closed</option>
-        </select>
-      </div>
-
-      <div className="p-6 border-b border-slate-100 shrink-0">
-        <h3 className="font-bold text-lg text-slate-800 mb-3">{selectedDoubt.title || selectedDoubt.subject}</h3>
-        <div className="bg-slate-50 p-4 rounded-xl text-sm text-slate-700 whitespace-pre-wrap">
-          {selectedDoubt.description || selectedDoubt.question}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/30">
-         {selectedDoubt.replies?.map((reply: any, idx: number) => (
-            <div key={idx} className={`flex ${reply.author === 'Admin' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-3 rounded-2xl ${reply.author === 'Admin' ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
-                <span className="text-[10px] font-bold opacity-80 block mb-1">{reply.author}</span>
-                <p className="text-sm whitespace-pre-wrap">{reply.text}</p>
-              </div>
-            </div>
-         ))}
-      </div>
-
-      <div className="p-4 border-t border-slate-200 bg-white shrink-0">
-        <form onSubmit={handleReplySubmit} className="flex gap-2">
-          <input 
-            type="text" 
-            value={replyText}
-            onChange={e => setReplyText(e.target.value)}
-            placeholder="Type your reply..." 
-            className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center justify-center">
-            <Send className="w-4 h-4 mr-2" /> Send
-          </button>
-        </form>
-      </div>
+    <div className="-m-6">
+      <DoubtSupport fixedBatchId={batchId} />
     </div>
   );
 }

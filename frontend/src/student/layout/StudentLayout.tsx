@@ -147,26 +147,26 @@ function StudentLayoutContent() {
         flex flex-col
       `}>
         {/* Sidebar Header — branding */}
-        <div className="h-[72px] flex items-center bg-[#092e5c] border-b border-white/10 shrink-0">
+        <div className="h-20 flex items-center bg-[#092e5c] border-b border-white/10 shrink-0 px-6">
           <Link
             to="/student/dashboard"
-            className="flex items-center justify-center w-full h-full px-5 py-3"
+            className="flex items-center w-full h-full"
           >
             <img
               src="/footer-logo.png"
               alt="Sri Vihaan SAP Consulting"
-              className="h-10 max-w-[180px] w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
           </Link>
           <button
-            className="lg:hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
+            className="lg:hidden absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-white p-2 rounded-md hover:bg-white/10 transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -177,17 +177,20 @@ function StudentLayoutContent() {
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
                 className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all relative
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all relative group overflow-hidden
                   ${isActive
-                    ? 'bg-[#1763B6] text-white font-medium shadow-sm'
-                    : 'text-slate-300 hover:bg-[#145096] hover:text-white'
+                    ? 'bg-white/10 text-white font-semibold'
+                    : 'text-slate-300 hover:bg-white/5 hover:text-white'
                   }
                 `}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span className="text-sm flex-1">{item.name}</span>
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full" />
+                )}
+                <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <span className="text-sm flex-1 tracking-wide">{item.name}</span>
                 {item.name === 'Notifications' && unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full absolute right-3">
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full absolute right-3 shadow-sm">
                     {unreadCount}
                   </span>
                 )}
