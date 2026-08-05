@@ -153,7 +153,7 @@ function StudentLayoutContent() {
             className="flex items-center w-full h-full"
           >
             <img
-              src="/footer-logo.png"
+              src={brandingConfig?.studentPortalLogoUrl || "/footer-logo.png"}
               alt="Sri Vihaan SAP Consulting"
               className="h-12 w-auto object-contain"
             />

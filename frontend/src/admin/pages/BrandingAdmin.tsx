@@ -3,14 +3,15 @@ import { useBrandingConfig } from '../../hooks/useBrandingConfig';
 import { db } from '../../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { BrandingConfig } from '../../types';
-import { Save, CheckCircle, Phone, Mail, Link as LinkIcon, Trash2, Plus, GripVertical } from 'lucide-react';
+import { Save, CheckCircle, Phone, Mail, Link as LinkIcon, Trash2, Plus, GripVertical, Image } from 'lucide-react';
+import ImageUploader from '../components/ImageUploader';
 
 export default function BrandingAdmin() {
   const { config, loading } = useBrandingConfig();
   const [formData, setFormData] = useState<BrandingConfig | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [activeTab, setActiveTab] = useState<'contact' | 'social'>('contact');
+  const [activeTab, setActiveTab] = useState<'logos' | 'contact' | 'social'>('logos');
 
   useEffect(() => {
     if (config) {
@@ -102,6 +103,7 @@ export default function BrandingAdmin() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="flex border-b border-slate-200 overflow-x-auto">
           {[
+            { id: 'logos', label: 'Logos & Branding', icon: Image },
             { id: 'contact', label: 'Contact Details', icon: Phone },
             { id: 'social', label: 'Social Media', icon: LinkIcon }
           ].map(tab => (
@@ -119,7 +121,79 @@ export default function BrandingAdmin() {
         </div>
 
         <div className="p-6">
-          {/* Logo management removed — logos are now local files in src/assets/branding/ */}
+          {/* Logos Tab */}
+          {activeTab === 'logos' && (
+            <div className="space-y-6 max-w-4xl">
+              <div>
+                <h3 className="font-semibold text-slate-800 border-b pb-2 mb-4">Site Logos</h3>
+                <p className="text-sm text-slate-500 mb-6">Upload logos for each area of the platform. Images are stored in Firebase Storage and applied automatically. If no logo is uploaded, the local fallback file is used.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <ImageUploader
+                    label="Header Logo (Public Website)"
+                    value={formData.headerLogoUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, headerLogoUrl: url })}
+                    folder="branding"
+                    maxDimension={400}
+                    recommendedSize="320 × 90 px"
+                    recommendedFormat="SVG or transparent PNG"
+                    previewClassName="max-h-[60px] max-w-[220px] object-contain"
+                  />
+                  <ImageUploader
+                    label="Footer Logo (Public Website)"
+                    value={formData.footerLogoUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, footerLogoUrl: url })}
+                    folder="branding"
+                    maxDimension={400}
+                    recommendedSize="320 × 90 px"
+                    recommendedFormat="SVG or transparent PNG (white version)"
+                    previewClassName="max-h-[60px] max-w-[220px] object-contain bg-slate-700 p-2 rounded"
+                  />
+                  <ImageUploader
+                    label="Admin Portal Logo"
+                    value={formData.adminPortalLogoUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, adminPortalLogoUrl: url })}
+                    folder="branding"
+                    maxDimension={400}
+                    recommendedSize="320 × 90 px"
+                    recommendedFormat="SVG or transparent PNG (white version)"
+                    previewClassName="max-h-[60px] max-w-[220px] object-contain bg-slate-800 p-2 rounded"
+                  />
+                  <ImageUploader
+                    label="Student Portal Logo"
+                    value={formData.studentPortalLogoUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, studentPortalLogoUrl: url })}
+                    folder="branding"
+                    maxDimension={400}
+                    recommendedSize="320 × 90 px"
+                    recommendedFormat="SVG or transparent PNG (white version)"
+                    previewClassName="max-h-[60px] max-w-[220px] object-contain bg-slate-800 p-2 rounded"
+                  />
+                  <ImageUploader
+                    label="About Page — Mentor Photo"
+                    value={formData.aboutMentorPhotoUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, aboutMentorPhotoUrl: url })}
+                    folder="branding"
+                    maxDimension={600}
+                    recommendedSize="600 × 600 px"
+                    recommendedFormat="PNG or JPG (professional headshot)"
+                    previewClassName="w-36 h-36 object-cover rounded-xl"
+                  />
+                  <ImageUploader
+                    label="Favicon"
+                    value={formData.faviconUrl || ''}
+                    onChange={(url) => setFormData({ ...formData, faviconUrl: url })}
+                    folder="branding"
+                    maxDimension={64}
+                    recommendedSize="64 × 64 px"
+                    recommendedFormat="ICO, PNG, or SVG"
+                    previewClassName="w-12 h-12 object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Legacy logo notice removed — logos now managed above via Firebase Storage */}
 
           {activeTab === 'contact' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">

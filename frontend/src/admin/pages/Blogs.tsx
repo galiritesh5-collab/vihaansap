@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
-import { Plus, Edit2, Trash2, X, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, CheckCircle } from 'lucide-react';
 import RichTextEditor from '../components/RichTextEditor';
+import ImageUploader from '../components/ImageUploader';
 
 const CATEGORIES = [
   'Technical', 'Career', 'SAP FICO', 'SAP MM', 'SAP SD', 'ABAP', 'SAP HANA', 'General'
@@ -34,15 +35,8 @@ export default function Blogs() {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEditingBlog({ ...editingBlog, coverImage: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleCoverImageChange = (url: string) => {
+    setEditingBlog({ ...editingBlog, coverImage: url });
   };
 
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -142,30 +136,16 @@ export default function Blogs() {
                 
                 {/* Cover Image Upload */}
                 <div className="mt-4">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Cover Image</label>
-                  {editingBlog.coverImage ? (
-                    <div className="relative group rounded-xl overflow-hidden border border-slate-200">
-                      <img src={editingBlog.coverImage} alt="Cover" className="w-full h-48 object-cover" />
-                      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <label className="cursor-pointer px-4 py-2 bg-white text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50">
-                          Replace Image
-                          <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                        </label>
-                        <button onClick={() => setEditingBlog({...editingBlog, coverImage: null})} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <ImageIcon className="w-8 h-8 text-slate-400 mb-2" />
-                        <p className="text-sm text-slate-500"><span className="font-semibold text-indigo-600">Click to upload</span> or drag and drop</p>
-                        <p className="text-xs text-slate-400 mt-1">PNG, JPG or WEBP (Max. 2MB)</p>
-                      </div>
-                      <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleImageUpload} />
-                    </label>
-                  )}
+                  <ImageUploader
+                    label="Cover Image"
+                    value={editingBlog.coverImage || ''}
+                    onChange={handleCoverImageChange}
+                    folder="blogs"
+                    maxDimension={1200}
+                    recommendedSize="1200 × 630 px"
+                    recommendedFormat="PNG, JPG, WEBP"
+                    previewClassName="w-full h-48 object-cover"
+                  />
                 </div>
               </div>
 

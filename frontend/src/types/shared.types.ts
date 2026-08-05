@@ -68,6 +68,10 @@ export interface BrandingConfig {
   logoUrl?: string;
   faviconUrl?: string;
   footerLogoUrl?: string;
+  headerLogoUrl?: string;
+  adminPortalLogoUrl?: string;
+  studentPortalLogoUrl?: string;
+  aboutMentorPhotoUrl?: string;
 
   primaryMobile: string;
   secondaryMobile: string;

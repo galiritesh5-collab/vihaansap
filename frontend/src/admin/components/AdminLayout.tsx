@@ -84,7 +84,7 @@ export default function AdminLayout() {
       `}>
         <div className="h-16 flex items-center justify-between px-6 bg-slate-950 border-b border-slate-800 shrink-0">
           <Link to="/admin/dashboard" className="flex items-center gap-2 pointer-events-auto">
-            <img src="/footer-logo.png" alt="Sri Vihaan Logo" className="max-h-10 w-auto object-contain bg-white/10 p-1 rounded" />
+            <img src={brandingConfig?.adminPortalLogoUrl || "/footer-logo.png"} alt="Sri Vihaan Logo" className="max-h-10 w-auto object-contain bg-white/10 p-1 rounded" />
           </Link>
           <button className="lg:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />

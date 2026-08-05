@@ -3,6 +3,7 @@ import { X, Save, Plus, Trash2, ArrowLeft, GripVertical, ArrowUp, ArrowDown } fr
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
 import { SAP_COURSES } from '../../data';
+import ImageUploader from './ImageUploader';
 
 interface CourseBuilderProps {
   initialData: any;
@@ -227,8 +228,16 @@ export default function CourseBuilder({ initialData, onClose, onSave }: CourseBu
                       <textarea name="description" rows={3} value={formData.description || ''} onChange={handleChange} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#1763B6]/20 outline-none" />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Course Image (URL)</label>
-                      <input type="text" name="thumbnail" value={formData.thumbnail || ''} onChange={handleChange} placeholder="Image URL (e.g., https://...)" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#1763B6]/20 outline-none mb-4" />
+                      <ImageUploader
+                        label="Course Thumbnail"
+                        value={formData.thumbnail || ''}
+                        onChange={(url) => setFormData((prev: any) => ({ ...prev, thumbnail: url }))}
+                        folder="courses"
+                        maxDimension={1200}
+                        recommendedSize="1200 × 675 px"
+                        recommendedFormat="PNG, JPG, WEBP"
+                        previewClassName="w-full h-32 object-cover rounded"
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Long Description</label>
@@ -449,8 +458,16 @@ export default function CourseBuilder({ initialData, onClose, onSave }: CourseBu
                       <input type="text" name="mentorExperience" value={formData.mentorExperience || ''} onChange={handleChange} placeholder="e.g. 15+ Years" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#1763B6]/20 outline-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Photo URL</label>
-                      <input type="text" name="mentorPhoto" value={formData.mentorPhoto || ''} onChange={handleChange} placeholder="https://" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#1763B6]/20 outline-none" />
+                      <ImageUploader
+                        label="Mentor Photo"
+                        value={formData.mentorPhoto || ''}
+                        onChange={(url) => setFormData((prev: any) => ({ ...prev, mentorPhoto: url }))}
+                        folder="mentors"
+                        maxDimension={600}
+                        recommendedSize="600 × 600 px"
+                        recommendedFormat="Square PNG/JPG"
+                        previewClassName="w-24 h-24 object-cover rounded-full"
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-slate-600 uppercase mb-1.5">Short Bio</label>

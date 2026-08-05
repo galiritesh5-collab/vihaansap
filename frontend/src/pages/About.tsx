@@ -23,6 +23,7 @@ interface StatProps {
 function CounterItem({ label, target, suffix, id, textOverride }: StatProps) {
   const [count, setCount] = useState(0);
 
+  const { config } = useBrandingConfig();
   useEffect(() => {
     if (target === undefined) return;
     let start = 0;
@@ -231,7 +232,7 @@ export default function About() {
             <div className="lg:col-span-5 order-2 lg:order-1">
               <div className="relative max-w-[450px] mx-auto w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-lg border border-slate-100">
                 <img 
-                  src={mentorImage} 
+                  src={config?.aboutMentorPhotoUrl || mentorImage} 
                   alt="Shri Ram Sharma - Mentor" 
                   className="w-full h-full object-cover"
                 />

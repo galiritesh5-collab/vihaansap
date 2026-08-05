@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, MessageSquare, Star, Settings, Plus, PlayCircle, Edit2, Trash2, HelpCircle, X, ChevronDown, CheckCircle } from 'lucide-react';
 import { MockDB } from '../../services/MockDB';
+import ImageUploader from '../components/ImageUploader';
 import DoubtSupport from './DoubtSupport';
 import { useAuth } from '../../contexts/AuthContext';
 import { BatchPlannerWeek, BatchSession, StudyMaterial, CourseRating, SessionFeedback } from '../../types';
@@ -1113,7 +1114,7 @@ function RecordingsTab({ batchId }: { batchId: string }) {
           courseName: batchObj?.course || '',
           uploadDate: new Date().toISOString().split('T')[0],
           visibility: editing.visibility || 'Students',
-          thumbnail: editing.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80'
+          thumbnail: editing.thumbnail || '/assets/course-default.png'
         };
         MockDB.addItem('recordings', newRec);
         if (newRec.visibility === 'Students') {
@@ -1191,6 +1192,18 @@ function RecordingsTab({ batchId }: { batchId: string }) {
             <div className="col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Link / Video URL</label>
               <input required type="text" value={editing.videoUrl || ''} onChange={e => setEditing({...editing, videoUrl: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div className="col-span-2">
+              <ImageUploader
+                label="Recording Thumbnail (optional)"
+                value={editing.thumbnail || ''}
+                onChange={(url) => setEditing({...editing, thumbnail: url})}
+                folder="recordings"
+                maxDimension={1200}
+                recommendedSize="1200 × 675 px"
+                recommendedFormat="PNG, JPG, WEBP"
+                previewClassName="w-full h-28 object-cover rounded"
+              />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recipients</label>
