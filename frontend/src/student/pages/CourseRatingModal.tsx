@@ -9,7 +9,14 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
   const { studentProfile, currentUser } = useAuth();
   const db = useDB();
   const campaign = campaignId && db.reviewCampaigns ? db.reviewCampaigns.find((c: any) => c.id === campaignId) : null;
-  const existingReview = campaignId && db.reviews ? db.reviews.find((r: any) => r.campaignId === campaignId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id || r.studentId === currentUser?.uid)) : null;
+  // Check for an already-submitted review for THIS specific campaign
+  const existingCampaignReview = campaignId && db.reviews ? db.reviews.find((r: any) => r.campaignId === campaignId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id || r.studentId === currentUser?.uid)) : null;
+  // If no review for this campaign yet, pre-fill from the student's latest review for the same batch
+  const latestBatchReview = !existingCampaignReview && db.reviews && (batch?.id) 
+    ? [...(db.reviews as any[])].filter((r: any) => r.batchId === batch.id && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id)).sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0]
+    : null;
+  // Use campaign review for editing; latest batch review for pre-fill; otherwise blank
+  const existingReview = existingCampaignReview || latestBatchReview || null;
 
   // External link override
   const hasExternalLink = !!campaign?.externalLink || !!batch?.externalReviewLink;
@@ -49,10 +56,10 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
     const now = new Date().toISOString();
     const reviewId = `rev-${Date.now()}`;
 
-    // ONE canonical review record
+    // ONE canonical review record — use existing campaign review id for edits, new id otherwise
     const review = {
-      id: existingReview?.id || reviewId,
-      reviewId: existingReview?.id || reviewId,
+      id: existingCampaignReview?.id || reviewId,
+      reviewId: existingCampaignReview?.id || reviewId,
       campaignId, // new field
       studentUid: currentUser?.uid || studentProfile?.id,
       studentName: studentProfile?.name || currentUser?.displayName || 'Student',
@@ -66,7 +73,7 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
       company: company.trim() || undefined,
       recommend,
       status: 'Pending', // always reset to pending on edit
-      createdAt: existingReview?.createdAt || now,
+      createdAt: existingCampaignReview?.createdAt || now,
       updatedAt: now,
       // Backward compatibility fields for old queries:
       name: studentProfile?.name || currentUser?.displayName || 'Student',
@@ -74,11 +81,12 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
       course: currentCourseName,
       review: comments,
       content: comments,
-      date: existingReview?.date || now,
+      date: existingCampaignReview?.date || now,
     };
 
-    if (existingReview?.id) {
-      MockDB.updateItem('reviews', existingReview.id, review);
+    // Only update the SAME CAMPAIGN review; for pre-filled-from-previous, always create a new record
+    if (existingCampaignReview?.id) {
+      MockDB.updateItem('reviews', existingCampaignReview.id, review);
     } else {
       MockDB.addItem('reviews', review);
     }
@@ -142,8 +150,13 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
           ) : (
             <>
               <h3 className="text-xl font-bold text-slate-800 mb-1">
-                {isMandatory ? 'Feedback Required' : 'Rate Your Course'}
+                {isMandatory ? 'Feedback Required' : campaign?.name ? `Request: ${campaign.name}` : latestBatchReview ? 'Update Your Review' : 'Rate Your Course'}
               </h3>
+              {latestBatchReview && !existingCampaignReview && (
+                <p className="text-xs text-indigo-600 font-semibold mb-4 bg-indigo-50 px-3 py-1.5 rounded-lg">
+                  Pre-filled from your previous review. You may update it below.
+                </p>
+              )}
               <div className="mb-6">
                 <label className="block text-xs font-bold text-slate-700 mb-1">Course</label>
                 <select

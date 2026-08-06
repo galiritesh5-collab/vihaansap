@@ -54,6 +54,14 @@ export default function Notifications() {
                     <span className="text-xs font-semibold text-slate-400 whitespace-nowrap">{notif.date}</span>
                   </div>
                   <p className="text-sm text-slate-600 mt-1 leading-relaxed">{notif.message}</p>
+                  
+                  {notif.type === 'review_campaign' && (
+                    <div className="mt-3">
+                      <span className="inline-block text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+                        Check your Dashboard to submit this review
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

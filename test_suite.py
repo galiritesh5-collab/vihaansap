@@ -67,7 +67,7 @@ test(6, "Student opens notification and submits review",
 test(7, "Student edits review within same campaign (no duplicate)",
      "existingReview" in modal and
      "r.campaignId === campaignId" in modal and
-     "existingReview?.id" in modal and
+     "existingCampaignReview?.id" in modal and
      "MockDB.updateItem('reviews'" in modal and
      "MockDB.addItem('reviews'" in modal)
 
@@ -126,7 +126,7 @@ test(15, "Firestore sync for Campaigns, Reviews, Notifications",
 # TEST 16 — No duplicate Firestore documents
 test(16, "No duplicate Firestore documents for reviews",
      # When campaignId + studentUid match existing, updateItem is called
-     "existingReview?.id" in modal and
+     "existingCampaignReview?.id" in modal and
      "MockDB.updateItem('reviews'" in modal)
 
 # TEST 17 — Portals unaffected

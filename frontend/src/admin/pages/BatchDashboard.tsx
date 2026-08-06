@@ -515,6 +515,18 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
   const campaignReviews = activeCampaign ? (db.reviews || []).filter((r: any) => r.campaignId === activeCampaign.id) : [];
   
   const handleApprove = (reviewId: string) => {
+    // Find the review being approved
+    const reviewToApprove = (db.reviews || []).find((r: any) => r.id === reviewId);
+    // Supersede any other approved reviews for the same student + batch
+    if (reviewToApprove?.studentUid && reviewToApprove?.batchId) {
+      const oldApproved = (db.reviews || []).filter((r: any) =>
+        r.id !== reviewId &&
+        r.status === 'Approved' &&
+        r.batchId === reviewToApprove.batchId &&
+        r.studentUid === reviewToApprove.studentUid
+      );
+      oldApproved.forEach((r: any) => MockDB.updateItem('reviews', r.id, { status: 'Superseded' }));
+    }
     MockDB.updateItem('reviews', reviewId, { status: 'Approved' });
   };
   const handleReject = (reviewId: string) => {
@@ -645,15 +657,15 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
           onClick={() => setShowCreateModal(true)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Create Campaign
+          <Plus className="w-4 h-4" /> Send Review Request
         </button>
       </div>
       
       {campaigns.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-500">
           <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h4 className="text-lg font-bold text-slate-700">No Campaigns Yet</h4>
-          <p className="mt-2 text-sm max-w-sm mx-auto">Create a review campaign to collect feedback from students.</p>
+          <h4 className="text-lg font-bold text-slate-700">No Review Requests Yet</h4>
+          <p className="mt-2 text-sm max-w-sm mx-auto">Send a review request to collect feedback from students.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -698,7 +710,7 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
             </div>
             <form onSubmit={handleCreateCampaign} className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Campaign Name *</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Request Title *</label>
                 <input required type="text" value={newCampaign.name} onChange={e => setNewCampaign({...newCampaign, name: e.target.value})} placeholder="e.g., End of Course Feedback" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div>
