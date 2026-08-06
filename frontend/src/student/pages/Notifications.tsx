@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { Bell, Info, AlertCircle, CheckCircle } from 'lucide-react';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
+import { markNotificationsRead } from '../../utils/notificationReadState';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 
 export default function Notifications() {
@@ -21,6 +22,10 @@ export default function Notifications() {
     if (n.target === 'Campaign') return isTargetedToStudent(n, studentProfile);
     return false;
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+
+  React.useEffect(() => {
+    markNotificationsRead(notifications, studentProfile);
+  }, [notifications, studentProfile]);
 
   return (
     <div className="p-4 sm:p-8 space-y-6 max-w-4xl">

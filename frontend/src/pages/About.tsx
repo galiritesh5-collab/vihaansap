@@ -232,7 +232,7 @@ export default function About() {
             <div className="lg:col-span-5 order-2 lg:order-1">
               <div className="relative max-w-[450px] mx-auto w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-lg border border-slate-100">
                 <img 
-                  src={config?.aboutMentorPhotoUrl || mentorImage} 
+                  src={brandingConfig?.aboutMentorPhotoUrl || mentorImage}
                   alt="Shri Ram Sharma - Mentor" 
                   className="w-full h-full object-cover"
                 />

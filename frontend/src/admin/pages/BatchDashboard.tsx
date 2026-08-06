@@ -501,6 +501,7 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
       title: "Feedback Request: " + newCampaign.name,
       message: newCampaign.description || "Please share your learning experience.",
       date: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
       isFeedbackRequest: true,
       recipientType: 'selected',
       recipientIds

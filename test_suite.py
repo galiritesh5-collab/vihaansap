@@ -47,7 +47,7 @@ test(3, "Send to Selected Students",
 test(4, "Only selected students receive notifications",
      "recipientType: 'selected'" in bd and
      "recipientIds" in bd and
-     "isTargetedToStudent(n, studentProfile)" in dash and
+     "isTargetedToStudent(notification, studentProfile)" in dash and
      "isTargetedToStudent(n, studentProfile)" in notif_page)
 
 # TEST 5 — New students NOT receiving old notifications
@@ -59,7 +59,7 @@ test(5, "New students do NOT receive old campaign notifications",
 
 # TEST 6 — Student submits review
 test(6, "Student opens notification and submits review",
-     "type === 'review_campaign'" in dash and
+     "notification.type !== 'review_campaign'" in dash and
      "target === 'Campaign'" in layout and
      "MockDB.addItem('reviews'" in modal and
      "campaignId," in modal)

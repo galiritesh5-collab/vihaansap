@@ -9,6 +9,7 @@ import { useDB } from '../../hooks/useDB';
 import { useBrandingConfig } from '../../hooks/useBrandingConfig';
 import CourseRatingModal from '../pages/CourseRatingModal';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
+import { isNotificationRead, markNotificationsRead } from '../../utils/notificationReadState';
 import { ActiveBatchProvider, useActiveBatch } from '../contexts/ActiveBatchContext';
 
 // ─── Dynamic student status helper ─────────────────────────────────────────
@@ -50,6 +51,7 @@ function StudentLayoutContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationReadVersion, setNotificationReadVersion] = useState(0);
   const status = useStudentStatus(user?.uid, studentProfile?.id);
   const { activeBatch, enrolledBatches, setActiveBatchId } = useActiveBatch();
 
@@ -105,19 +107,19 @@ function StudentLayoutContent() {
   }) || [];
   
   useEffect(() => {
-    const lastRead = localStorage.getItem('lastReadNotifications');
     if (location.pathname === '/student/notifications') {
-      localStorage.setItem('lastReadNotifications', new Date().toISOString());
+      markNotificationsRead(notifications, studentProfile || user);
       setUnreadCount(0);
     } else {
-      if (!lastRead) {
-        setUnreadCount(notifications.length);
-      } else {
-        const unread = notifications.filter(n => new Date(n.date) > new Date(lastRead));
-        setUnreadCount(unread.length);
-      }
+      setUnreadCount(notifications.filter(notification => !isNotificationRead(notification, studentProfile || user)).length);
     }
-  }, [location.pathname, notifications]);
+  }, [location.pathname, notifications, studentProfile, user, notificationReadVersion]);
+
+  useEffect(() => {
+    const refreshUnreadCount = () => setNotificationReadVersion(version => version + 1);
+    window.addEventListener('student_notifications_updated', refreshUnreadCount);
+    return () => window.removeEventListener('student_notifications_updated', refreshUnreadCount);
+  }, []);
 
   const navItems = [
     { name: 'Dashboard',        path: '/student/dashboard',     icon: LayoutDashboard },

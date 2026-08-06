@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { MockDB } from '../../services/MockDB';
+import { markReviewRequestNotificationsRead } from '../../utils/notificationReadState';
 
 export default function CourseRatingModal({ batch, course, campaignId, onClose, isMandatory }: any) {
   const { studentProfile, currentUser } = useAuth();
@@ -51,7 +52,7 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
     handleDismiss();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const now = new Date().toISOString();
     const reviewId = `rev-${Date.now()}`;
@@ -86,11 +87,13 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
 
     // Only update the SAME CAMPAIGN review; for pre-filled-from-previous, always create a new record
     if (existingCampaignReview?.id) {
-      MockDB.updateItem('reviews', existingCampaignReview.id, review);
+      await MockDB.updateItem('reviews', existingCampaignReview.id, review);
     } else {
-      MockDB.addItem('reviews', review);
+      await MockDB.addItem('reviews', review);
     }
 
+    // A campaign request is complete only for this student after its review saves.
+    markReviewRequestNotificationsRead(campaignId, db.notifications || [], studentProfile || currentUser);
     setSubmitted(true);
     if (onClose) setTimeout(onClose, 2000);
     if (isMandatory) setTimeout(() => window.location.reload(), 2000);

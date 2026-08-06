@@ -7,6 +7,7 @@ import SessionFeedbackModal from './SessionFeedbackModal';
 import CourseRatingModal from './CourseRatingModal';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
+import { isNotificationRead } from '../../utils/notificationReadState';
 
 export default function Dashboard() {
   const { currentUser, studentProfile } = useAuth();
@@ -27,10 +28,14 @@ export default function Dashboard() {
 
   // Filter student notifications
   const studentNotifs = db.notifications?.filter(n => {
-    const targetMatch = n.target === 'Everyone' || n.target === 'Students';
-    const visibilityMatch = !n.visibilitySettings || n.visibilitySettings.mode === 'All' || n.visibilitySettings.studentIds?.includes(studentProfile?.id);
-    return targetMatch && visibilityMatch;
+    if (n.target === 'Everyone' || n.target === 'Students') return isTargetedToStudent(n, studentProfile);
+    if (n.target === 'Batch' && myBatches.some(batch => batch.id === n.targetId)) return isTargetedToStudent(n, studentProfile);
+    if (n.target === 'Course' && myBatches.some(batch => batch.course === n.targetId)) return true;
+    if ((n.target === 'Specific Student' || n.target === 'Student') && n.targetId === studentProfile?.id) return true;
+    if (n.target === 'Campaign') return isTargetedToStudent(n, studentProfile);
+    return false;
   }) || [];
+  const unreadStudentNotifs = studentNotifs.filter(notification => !isNotificationRead(notification, studentProfile || currentUser));
   const myDoubts = db.doubts?.filter(d => d.studentId === studentProfile?.id) || [];
   
   // Find past sessions missing feedback
@@ -66,7 +71,7 @@ export default function Dashboard() {
   const stats = [
     { name: 'Total Enrolled Courses', value: myBatches.length, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
     { name: "Today's Sessions", value: upcomingSessions.length, icon: MonitorPlay, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { name: 'Unread Notifications', value: studentNotifs.length, icon: Bell, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { name: 'Unread Notifications', value: unreadStudentNotifs.length, icon: Bell, color: 'text-purple-600', bg: 'bg-purple-50' },
     { name: 'Pending Doubts', value: myDoubts.filter(d => d.status === 'Pending').length, icon: HelpCircle, color: 'text-red-500', bg: 'bg-red-50' },
   ];
 
