@@ -47,17 +47,26 @@ export default function Dashboard() {
   // Review requests deliberately live on the dashboard until the student submits
   // the review for that specific campaign. Notifications remain a secondary path.
   const pendingReviewRequests = (db.notifications || [])
-    .map((notification: any) => ({
-      notification,
-      campaign: (db.reviewCampaigns || []).find((campaign: any) => campaign.id === notification.targetId),
-    }))
-    .filter(({ notification, campaign }: any) => {
-      if (notification.type !== 'review_campaign' || !campaign || campaign.status !== 'Active') return false;
-      if (!isTargetedToStudent(notification, studentProfile) || !isTargetedToStudent(campaign, studentProfile)) return false;
-      if (!myBatches.some((batch: any) => batch.id === campaign.batchId)) return false;
+    .map((notification: any) => {
+      const campaign = (db.reviewCampaigns || []).find((item: any) => item.id === notification.targetId);
+      return {
+        notification,
+        campaign,
+        batchId: campaign?.batchId || notification.batchId,
+        name: campaign?.name || notification.campaignName || notification.title?.replace(/^Feedback Request:\s*/, '') || 'Feedback Request',
+      };
+    })
+    .filter(({ notification, campaign, batchId }: any) => {
+      if (notification.type !== 'review_campaign') return false;
+      // The notification carries the batch and active state so a student does not
+      // lose the dashboard entry while the campaign listener is reconnecting.
+      if (campaign ? campaign.status !== 'Active' : notification.reviewRequestStatus === 'Closed') return false;
+      if (!isTargetedToStudent(notification, studentProfile)) return false;
+      if (campaign && !isTargetedToStudent(campaign, studentProfile)) return false;
+      if (!myBatches.some((batch: any) => batch.id === batchId)) return false;
 
       return !(db.reviews || []).some((review: any) =>
-        review.campaignId === campaign.id &&
+        review.campaignId === notification.targetId &&
         (review.studentUid === currentUser?.uid || review.studentId === studentProfile?.id || review.studentId === currentUser?.uid)
       );
     })
@@ -112,12 +121,18 @@ export default function Dashboard() {
 
       {/* Persistent Review Request Banners */}
       {pendingReviewRequests.length > 0 && (
-        <div className="space-y-4">
-          {pendingReviewRequests.map(({ notification: n, campaign }: any) => {
-            const batchForCampaign = campaign ? myBatches.find((b: any) => b.id === campaign.batchId) : null;
+        <section className="space-y-4" aria-labelledby="review-requests-heading">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 id="review-requests-heading" className="text-xl font-display font-extrabold text-slate-800">Review Requests</h2>
+              <p className="text-sm text-slate-600">You have {pendingReviewRequests.length} pending review request{pendingReviewRequests.length === 1 ? '' : 's'}.</p>
+            </div>
+          </div>
+          {pendingReviewRequests.map(({ notification: n, batchId, name }: any) => {
+            const batchForCampaign = myBatches.find((batch: any) => batch.id === batchId) || null;
             if (!batchForCampaign) return null;
             return (
-              <div key={campaign.id} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div key={n.targetId} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start sm:items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0 shadow-inner">
                     <Star className="w-6 h-6 text-red-600 fill-red-500 animate-pulse" />
@@ -125,7 +140,7 @@ export default function Dashboard() {
                   <div>
                     <h3 className="font-bold text-red-900 text-lg flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-                      Review Pending: {campaign?.name || 'Feedback Request'}
+                      Review Pending: {name}
                     </h3>
                     <p className="text-sm text-red-800 mt-1 max-w-2xl">{n.message || 'Your mentor has requested you to share your learning experience. Your feedback helps improve our training programs.'}</p>
                   </div>
@@ -139,7 +154,7 @@ export default function Dashboard() {
               </div>
             );
           })}
-        </div>
+        </section>
       )}
 
       {/* Welcome Section */}

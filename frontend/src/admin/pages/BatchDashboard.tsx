@@ -498,6 +498,9 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
       type: 'review_campaign',
       target: 'Campaign',
       targetId: campaignId,
+      batchId,
+      campaignName: newCampaign.name,
+      reviewRequestStatus: 'Active',
       title: "Feedback Request: " + newCampaign.name,
       message: newCampaign.description || "Please share your learning experience.",
       date: new Date().toISOString().split('T')[0],
@@ -537,7 +540,11 @@ function ReviewsFeedbackTab({ batchId }: { batchId: string }) {
     MockDB.deleteItem('reviews', reviewId);
   };
   const handleToggleCampaignStatus = (campaign: any) => {
-    MockDB.updateItem('reviewCampaigns', campaign.id, { status: campaign.status === 'Active' ? 'Closed' : 'Active' });
+    const reviewRequestStatus = campaign.status === 'Active' ? 'Closed' : 'Active';
+    MockDB.updateItem('reviewCampaigns', campaign.id, { status: reviewRequestStatus });
+    (db.notifications || [])
+      .filter((notification: any) => notification.type === 'review_campaign' && notification.targetId === campaign.id)
+      .forEach((notification: any) => MockDB.updateItem('notifications', notification.id, { reviewRequestStatus }));
   };
 
   if (activeCampaignId && activeCampaign) {

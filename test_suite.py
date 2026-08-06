@@ -140,6 +140,12 @@ test(17, "Student/Admin/Mentor Portals unaffected",
 # TEST 18 — npm run build (checked separately)
 test(18, "npm run build (verified separately)", True, "Build task running")
 
+test(19, "Review request banner falls back to notification data",
+     "batchId," in bd and
+     "reviewRequestStatus: 'Active'" in bd and
+     "campaign?.batchId || notification.batchId" in dash and
+     "notification.reviewRequestStatus === 'Closed'" in dash)
+
 print()
 print("=" * 60)
 pass_count = sum(1 for _, _, s, _ in tests if s == "PASS")
