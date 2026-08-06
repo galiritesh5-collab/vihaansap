@@ -71,15 +71,18 @@ function StudentLayoutContent() {
     return !hasFeedback;
   });
 
-  // Check for requested feedback (via Admin notification)
+    // Check for requested feedback (via Admin notification)
   const feedbackRequestNotification = db.notifications?.find(n => 
-    (n.type === 'review_request' || n.isFeedbackRequest) && 
-    myBatches.some(b => b.id === (n.targetId || n.batchId || n.relatedEntityId)) &&
-    !db.reviews?.some((r: any) => r.batchId === (n.targetId || n.batchId || n.relatedEntityId) && (r.studentUid === user?.uid || r.studentId === studentProfile?.id || r.studentId === user?.uid))
+    (n.type === 'review_campaign' || n.type === 'review_request' || n.isFeedbackRequest) && 
+    (
+      (n.type === 'review_campaign' && myBatches.some(b => b.id === db.reviewCampaigns?.find((c: any) => c.id === n.targetId)?.batchId) && !db.reviews?.some((r: any) => r.campaignId === n.targetId && (r.studentUid === user?.uid || r.studentId === studentProfile?.id || r.studentId === user?.uid)))
+      || 
+      (n.type !== 'review_campaign' && myBatches.some(b => b.id === (n.targetId || n.batchId || n.relatedEntityId)) && !db.reviews?.some((r: any) => r.batchId === (n.targetId || n.batchId || n.relatedEntityId) && !r.campaignId && (r.studentUid === user?.uid || r.studentId === studentProfile?.id || r.studentId === user?.uid)))
+    ) && isTargetedToStudent(n, studentProfile)
   );
-  
+
   const requestedFeedbackBatch = feedbackRequestNotification 
-    ? myBatches.find(b => b.id === (feedbackRequestNotification.targetId || feedbackRequestNotification.batchId || feedbackRequestNotification.relatedEntityId)) 
+    ? myBatches.find(b => b.id === (feedbackRequestNotification.type === 'review_campaign' ? db.reviewCampaigns?.find((c: any) => c.id === feedbackRequestNotification.targetId)?.batchId : (feedbackRequestNotification.targetId || feedbackRequestNotification.batchId || feedbackRequestNotification.relatedEntityId))) 
     : null;
 
   const pendingFeedbackBatch = mandatoryFeedbackBatch || requestedFeedbackBatch;
@@ -287,6 +290,7 @@ function StudentLayoutContent() {
           <CourseRatingModal
             batch={pendingFeedbackBatch}
             course={db.courses.find(c => c.name === pendingFeedbackBatch.course)}
+            campaignId={feedbackRequestNotification?.type === 'review_campaign' ? feedbackRequestNotification.targetId : undefined}
             onClose={() => setDismissedFeedback(true)}
             isMandatory={isMandatory}
           />

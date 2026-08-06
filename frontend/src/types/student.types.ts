@@ -25,6 +25,7 @@ export interface StudentReview {
   module?: string;
   course: string;
   status?: 'Pending' | 'Approved' | 'Rejected';
+  campaignId?: string;
   trainerRating?: number;
   contentRating?: number;
   supportRating?: number;
@@ -87,4 +88,16 @@ export interface PaymentRecord {
   receiptNo?: string;
   purpose?: string;
   courseName: string;
+}
+
+export interface ReviewCampaign {
+  id: string;
+  batchId: string;
+  name: string;
+  description: string;
+  externalLink?: string;
+  recipientIds: string[];
+  status: 'Active' | 'Closed';
+  createdAt: string;
+  createdBy: string;
 }

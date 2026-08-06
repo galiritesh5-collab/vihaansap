@@ -23,6 +23,7 @@ export interface DatabaseSchema {
   courseRatings: any[];
   blogs: any[];
   reviews: any[];
+  reviewCampaigns: any[];
   faqs: any[];
   schedules: any[];
   recordings: any[];

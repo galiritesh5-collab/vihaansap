@@ -16,6 +16,7 @@ const initialData: DatabaseSchema = {
   courseRatings: [],
   blogs: [],
   reviews: [],
+  reviewCampaigns: [],
   faqs: [],
   schedules: [],
   recordings: [],

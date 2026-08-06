@@ -1,0 +1,5 @@
+content = open('frontend/src/admin/pages/BatchDashboard.tsx', encoding='utf-8').read()
+start_idx = content.find("function ReviewsFeedbackTab")
+end_idx = content.find("function ", start_idx + 10)
+open('frontend/src/admin/pages/BatchDashboard.tsx.bak', 'w', encoding='utf-8').write(content)
+print(content[start_idx:end_idx])

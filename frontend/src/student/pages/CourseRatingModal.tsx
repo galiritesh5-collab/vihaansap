@@ -4,11 +4,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { MockDB } from '../../services/MockDB';
 
-export default function CourseRatingModal({ batch, course, onClose, isMandatory }: any) {
+export default function CourseRatingModal({ batch, course, campaignId, onClose, isMandatory }: any) {
   const { studentProfile, currentUser } = useAuth();
+  const db = window.MockDB ? window.MockDB.data : ({} as any); // fallback if useDB hook is missing inside, though we can use useDB
+  const campaign = campaignId && db.reviewCampaigns ? db.reviewCampaigns.find((c: any) => c.id === campaignId) : null;
+  const existingReview = campaignId && db.reviews ? db.reviews.find((r: any) => r.campaignId === campaignId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id || r.studentId === currentUser?.uid)) : null;
 
   // External link override
-  const hasExternalLink = !!batch?.externalReviewLink;
+  const hasExternalLink = !!campaign?.externalLink || !!batch?.externalReviewLink;
+  const externalLinkUrl = campaign?.externalLink || batch?.externalReviewLink;
 
   const { enrolledBatches } = useActiveBatch();
   
@@ -20,11 +24,11 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   const currentBatch = enrolledBatches.find(b => b.id === selectedBatchId) || batch;
   const currentCourseName = currentBatch?.course || course?.name || '';
 
-  const [rating, setRating] = useState(0);
-  const [comments, setComments] = useState('');
-  const [designation, setDesignation] = useState('');
-  const [company, setCompany] = useState('');
-  const [recommend, setRecommend] = useState(true);
+  const [rating, setRating] = useState(existingReview?.rating || 0);
+  const [comments, setComments] = useState(existingReview?.feedback || existingReview?.review || existingReview?.content || '');
+  const [designation, setDesignation] = useState(existingReview?.designation || '');
+  const [company, setCompany] = useState(existingReview?.company || '');
+  const [recommend, setRecommend] = useState(existingReview?.recommend ?? true);
   const [submitted, setSubmitted] = useState(false);
 
   const handleDismiss = () => {
@@ -35,7 +39,7 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
   };
 
   const handleExternalRedirect = () => {
-    window.open(batch?.externalReviewLink, '_blank');
+    window.open(externalLinkUrl, '_blank');
     handleDismiss();
   };
 
@@ -46,8 +50,9 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
 
     // ONE canonical review record
     const review = {
-      id: reviewId,
-      reviewId: reviewId,
+      id: existingReview?.id || reviewId,
+      reviewId: existingReview?.id || reviewId,
+      campaignId, // new field
       studentUid: currentUser?.uid || studentProfile?.id,
       studentName: studentProfile?.name || currentUser?.displayName || 'Student',
       batchId: currentBatch?.id || '',
@@ -59,8 +64,8 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
       designation: designation.trim() || undefined,
       company: company.trim() || undefined,
       recommend,
-      status: 'Pending',
-      createdAt: now,
+      status: 'Pending', // always reset to pending on edit
+      createdAt: existingReview?.createdAt || now,
       updatedAt: now,
       // Backward compatibility fields for old queries:
       name: studentProfile?.name || currentUser?.displayName || 'Student',
@@ -68,10 +73,14 @@ export default function CourseRatingModal({ batch, course, onClose, isMandatory 
       course: currentCourseName,
       review: comments,
       content: comments,
-      date: now,
+      date: existingReview?.date || now,
     };
 
-    MockDB.addItem('reviews', review);
+    if (existingReview?.id) {
+      MockDB.updateItem('reviews', existingReview.id, review);
+    } else {
+      MockDB.addItem('reviews', review);
+    }
 
     setSubmitted(true);
     if (onClose) setTimeout(onClose, 2000);
