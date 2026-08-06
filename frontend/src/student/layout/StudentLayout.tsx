@@ -100,6 +100,8 @@ function StudentLayoutContent() {
     if (n.target === 'Batch' && myBatches.some(b => b.id === n.targetId)) return isTargetedToStudent(n, studentProfile);
     if (n.target === 'Course' && myBatches.some(b => b.course === n.targetId)) return true;
     if (n.target === 'Specific Student' && n.targetId === studentProfile?.id) return true;
+    // Campaign notifications — show if student is in recipientIds
+    if (n.target === 'Campaign') return isTargetedToStudent(n, studentProfile);
     return false;
   }) || [];
   

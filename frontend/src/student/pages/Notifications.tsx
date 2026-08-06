@@ -17,6 +17,8 @@ export default function Notifications() {
     if (n.target === 'Batch' && n.targetId === activeBatch?.id) return isTargetedToStudent(n, studentProfile);
     if (n.target === 'Course' && activeBatch?.course === n.targetId) return true;
     if ((n.target === 'Specific Student' || n.target === 'Student') && n.targetId === studentProfile?.id) return true;
+    // Campaign review request notifications
+    if (n.target === 'Campaign') return isTargetedToStudent(n, studentProfile);
     return false;
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 

@@ -1,0 +1,5 @@
+sl = open('frontend/src/student/layout/StudentLayout.tsx', encoding='utf-8').read()
+print('Campaign filter in StudentLayout:', "target === 'Campaign'" in sl)
+n = open('frontend/src/student/pages/Notifications.tsx', encoding='utf-8').read()
+print('Campaign filter in Notifications:', "target === 'Campaign'" in n)
+print('isTargetedToStudent in Notifications:', 'isTargetedToStudent' in n)

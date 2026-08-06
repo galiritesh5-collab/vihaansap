@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { X, Star, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDB } from '../../hooks/useDB';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { MockDB } from '../../services/MockDB';
 
 export default function CourseRatingModal({ batch, course, campaignId, onClose, isMandatory }: any) {
   const { studentProfile, currentUser } = useAuth();
-  const db = window.MockDB ? window.MockDB.data : ({} as any); // fallback if useDB hook is missing inside, though we can use useDB
+  const db = useDB();
   const campaign = campaignId && db.reviewCampaigns ? db.reviewCampaigns.find((c: any) => c.id === campaignId) : null;
   const existingReview = campaignId && db.reviews ? db.reviews.find((r: any) => r.campaignId === campaignId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id || r.studentId === currentUser?.uid)) : null;
 
