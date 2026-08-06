@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare, Star , Star } from 'lucide-react';
+import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import SessionFeedbackModal from './SessionFeedbackModal';
@@ -39,13 +39,27 @@ export default function Dashboard() {
   });
 
 
-  // Collect ALL pending review requests
-  const pendingCampaignNotifications = (db.notifications || []).filter((n: any) =>
-    n.type === 'review_campaign' &&
-    isTargetedToStudent(n, studentProfile) &&
-    myBatches.some((b: any) => b.id === (db.reviewCampaigns || []).find((c: any) => c.id === n.targetId)?.batchId) &&
-    !(db.reviews || []).some((r: any) => r.campaignId === n.targetId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id))
-  ).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()); // newest first
+  // Review requests deliberately live on the dashboard until the student submits
+  // the review for that specific campaign. Notifications remain a secondary path.
+  const pendingReviewRequests = (db.notifications || [])
+    .map((notification: any) => ({
+      notification,
+      campaign: (db.reviewCampaigns || []).find((campaign: any) => campaign.id === notification.targetId),
+    }))
+    .filter(({ notification, campaign }: any) => {
+      if (notification.type !== 'review_campaign' || !campaign || campaign.status !== 'Active') return false;
+      if (!isTargetedToStudent(notification, studentProfile) || !isTargetedToStudent(campaign, studentProfile)) return false;
+      if (!myBatches.some((batch: any) => batch.id === campaign.batchId)) return false;
+
+      return !(db.reviews || []).some((review: any) =>
+        review.campaignId === campaign.id &&
+        (review.studentUid === currentUser?.uid || review.studentId === studentProfile?.id || review.studentId === currentUser?.uid)
+      );
+    })
+    .sort(({ notification: a, campaign: campaignA }: any, { notification: b, campaign: campaignB }: any) =>
+      new Date(campaignB?.createdAt || b.createdAt || b.date || 0).getTime() -
+      new Date(campaignA?.createdAt || a.createdAt || a.date || 0).getTime()
+    );
 
   const [activeReviewModal, setActiveReviewModal] = useState<{campaignId: string; batch: any} | null>(null);
 
@@ -92,14 +106,13 @@ export default function Dashboard() {
       
 
       {/* Persistent Review Request Banners */}
-      {pendingCampaignNotifications.length > 0 && (
+      {pendingReviewRequests.length > 0 && (
         <div className="space-y-4">
-          {pendingCampaignNotifications.map((n: any) => {
-            const campaign = (db.reviewCampaigns || []).find((c: any) => c.id === n.targetId);
+          {pendingReviewRequests.map(({ notification: n, campaign }: any) => {
             const batchForCampaign = campaign ? myBatches.find((b: any) => b.id === campaign.batchId) : null;
             if (!batchForCampaign) return null;
             return (
-              <div key={n.id || n.notificationId || n.targetId} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div key={campaign.id} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start sm:items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0 shadow-inner">
                     <Star className="w-6 h-6 text-red-600 fill-red-500 animate-pulse" />

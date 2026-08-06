@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const COLLECTIONS = [
   'courses', 'students', 'mentors', 'batches', 'batchPlanner', 'batchSessions',
-  'studyMaterials', 'sessionFeedback', 'courseRatings', 'blogs', 'reviews',
+  'studyMaterials', 'sessionFeedback', 'courseRatings', 'blogs', 'reviews', 'reviewCampaigns',
   'faqs', 'schedules', 'recordings', 'assignments', 'payments', 'doubts',
   'notifications', 'events', 'leads', 'serverEnquiries', 'accounts', 'serverPayments'
 ];

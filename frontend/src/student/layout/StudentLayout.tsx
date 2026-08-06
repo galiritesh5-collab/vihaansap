@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
   LayoutDashboard, BookOpen, MonitorPlay, Video, 
-  FileText, HelpCircle, Bell, Search, LogOut, Menu, X, Calendar, Star, Star
+  FileText, HelpCircle, Bell, Search, LogOut, Menu, X, Calendar, Star
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDB } from '../../hooks/useDB';

@@ -27,6 +27,7 @@ const COLLECTIONS_TO_SYNC: (keyof DatabaseSchema)[] = [
   'courseRatings',
   'blogs',
   'reviews',
+  'reviewCampaigns',
   'faqs',
   'schedules',
   'recordings',
