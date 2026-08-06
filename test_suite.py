@@ -16,6 +16,7 @@ def test(num, name, passed, reason=""):
 # ── File reads ─────────────────────────────────────────────────────────────
 bd = open('frontend/src/admin/pages/BatchDashboard.tsx', encoding='utf-8').read()
 layout = open('frontend/src/student/layout/StudentLayout.tsx', encoding='utf-8').read()
+dash = open('frontend/src/student/pages/Dashboard.tsx', encoding='utf-8').read()
 modal = open('frontend/src/student/pages/CourseRatingModal.tsx', encoding='utf-8').read()
 notif_page = open('frontend/src/student/pages/Notifications.tsx', encoding='utf-8').read()
 public_rev = open('frontend/src/pages/Reviews.tsx', encoding='utf-8').read()
@@ -46,7 +47,7 @@ test(3, "Send to Selected Students",
 test(4, "Only selected students receive notifications",
      "recipientType: 'selected'" in bd and
      "recipientIds" in bd and
-     "isTargetedToStudent(n, studentProfile)" in layout and
+     "isTargetedToStudent(n, studentProfile)" in dash and
      "isTargetedToStudent(n, studentProfile)" in notif_page)
 
 # TEST 5 — New students NOT receiving old notifications
@@ -58,7 +59,7 @@ test(5, "New students do NOT receive old campaign notifications",
 
 # TEST 6 — Student submits review
 test(6, "Student opens notification and submits review",
-     "type === 'review_campaign'" in layout and
+     "type === 'review_campaign'" in dash and
      "target === 'Campaign'" in layout and
      "MockDB.addItem('reviews'" in modal and
      "campaignId," in modal)

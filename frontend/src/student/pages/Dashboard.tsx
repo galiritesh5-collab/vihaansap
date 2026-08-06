@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare } from 'lucide-react';
+import { BookOpen, MonitorPlay, Bell, HelpCircle, ArrowRight, Video, FileText, CheckCircle, MessageSquare, Star , Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
 import SessionFeedbackModal from './SessionFeedbackModal';
+import CourseRatingModal from './CourseRatingModal';
 import { useActiveBatch } from '../contexts/ActiveBatchContext';
 import { isTargetedToStudent } from '../../utils/recipientTargeting';
 
@@ -36,6 +37,17 @@ export default function Dashboard() {
   const pendingFeedbackSessions = pastSessions.filter(s => {
     return !db.sessionFeedback?.some(f => f.sessionId === s.id && f.studentId === studentProfile?.id);
   });
+
+
+  // Collect ALL pending review requests
+  const pendingCampaignNotifications = (db.notifications || []).filter((n: any) =>
+    n.type === 'review_campaign' &&
+    isTargetedToStudent(n, studentProfile) &&
+    myBatches.some((b: any) => b.id === (db.reviewCampaigns || []).find((c: any) => c.id === n.targetId)?.batchId) &&
+    !(db.reviews || []).some((r: any) => r.campaignId === n.targetId && (r.studentUid === currentUser?.uid || r.studentId === studentProfile?.id))
+  ).sort((a: any, b: any) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()); // newest first
+
+  const [activeReviewModal, setActiveReviewModal] = useState<{campaignId: string; batch: any} | null>(null);
 
   const stats = [
     { name: 'Total Enrolled Courses', value: myBatches.length, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -78,6 +90,40 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-w-7xl mx-auto">
       
+
+      {/* Persistent Review Request Banners */}
+      {pendingCampaignNotifications.length > 0 && (
+        <div className="space-y-4">
+          {pendingCampaignNotifications.map((n: any) => {
+            const campaign = (db.reviewCampaigns || []).find((c: any) => c.id === n.targetId);
+            const batchForCampaign = campaign ? myBatches.find((b: any) => b.id === campaign.batchId) : null;
+            if (!batchForCampaign) return null;
+            return (
+              <div key={n.id || n.notificationId || n.targetId} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0 shadow-inner">
+                    <Star className="w-6 h-6 text-red-600 fill-red-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-red-900 text-lg flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
+                      Review Pending: {campaign?.name || 'Feedback Request'}
+                    </h3>
+                    <p className="text-sm text-red-800 mt-1 max-w-2xl">{n.message || 'Your mentor has requested you to share your learning experience. Your feedback helps improve our training programs.'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveReviewModal({ campaignId: n.targetId, batch: batchForCampaign })}
+                  className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 shrink-0"
+                >
+                  Submit Review
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Welcome Section */}
       <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-50 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
@@ -269,6 +315,16 @@ export default function Dashboard() {
           session={feedbackSession} 
           batch={db.batches.find(b => b.id === feedbackSession.batchId)} 
           onClose={() => setFeedbackSession(null)} 
+        />
+      )}
+
+      {activeReviewModal && (
+        <CourseRatingModal
+          batch={activeReviewModal.batch}
+          course={db.courses.find((c: any) => c.name === activeReviewModal.batch?.course)}
+          campaignId={activeReviewModal.campaignId}
+          onClose={() => setActiveReviewModal(null)}
+          isMandatory={false}
         />
       )}
     </div>
