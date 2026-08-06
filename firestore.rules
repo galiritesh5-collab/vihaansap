@@ -20,15 +20,20 @@ service cloud.firestore {
     match /notifications/{document} { allow read: if signedIn(); allow create: if signedIn(); allow update, delete: if signedIn(); }
     match /config/{document} { allow read: if true; allow write: if admin(); }
     
+    // Helper function to check if the student is enrolled in the parent batch
+    function isEnrolledInBatch(batchId) {
+      return request.auth.uid in get(/databases/$(database)/documents/batches/$(batchId)).data.studentIds;
+    }
+
     match /batches/{document} { allow read: if admin() || (signedIn() && request.auth.uid in resource.data.studentIds); allow write: if admin(); }
-    match /batchPlanner/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
-    match /batchSessions/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
-    match /liveClasses/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
-    match /studyMaterials/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
+    match /batchPlanner/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    match /batchSessions/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    match /liveClasses/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    match /studyMaterials/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
     match /courseRatings/{document} { allow read: if true; allow write: if admin(); }
-    match /schedules/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
-    match /recordings/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
-    match /assignments/{document} { allow read: if admin() || signedIn(); allow write: if admin(); }
+    match /schedules/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    match /recordings/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    match /assignments/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
     match /payments/{document} { allow read: if admin() || (signedIn() && request.auth.uid == resource.data.studentId); allow write: if admin(); }
     match /events/{document} { allow read: if true; allow write: if admin(); }
     

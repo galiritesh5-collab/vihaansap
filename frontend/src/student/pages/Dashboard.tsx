@@ -63,7 +63,8 @@ export default function Dashboard() {
       if (campaign ? campaign.status !== 'Active' : notification.reviewRequestStatus === 'Closed') return false;
       if (!isTargetedToStudent(notification, studentProfile)) return false;
       if (campaign && !isTargetedToStudent(campaign, studentProfile)) return false;
-      if (!myBatches.some((batch: any) => batch.id === batchId)) return false;
+      // Architecture B: Removed myBatches dependency.
+      // if (!myBatches.some((batch: any) => batch.id === batchId)) return false;
 
       return !(db.reviews || []).some((review: any) =>
         review.campaignId === notification.targetId &&
@@ -128,9 +129,8 @@ export default function Dashboard() {
               <p className="text-sm text-slate-600">You have {pendingReviewRequests.length} pending review request{pendingReviewRequests.length === 1 ? '' : 's'}.</p>
             </div>
           </div>
-          {pendingReviewRequests.map(({ notification: n, batchId, name }: any) => {
-            const batchForCampaign = myBatches.find((batch: any) => batch.id === batchId) || null;
-            if (!batchForCampaign) return null;
+          {pendingReviewRequests.map(({ notification: n, campaign, batchId, name }: any) => {
+            const batchForCampaign = (db.batches || []).find((batch: any) => batch.id === batchId) || { id: batchId, course: campaign?.course || 'Assigned Course' };
             return (
               <div key={n.targetId} className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start sm:items-center gap-4">
