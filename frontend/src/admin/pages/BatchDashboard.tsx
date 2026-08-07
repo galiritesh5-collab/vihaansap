@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDB } from '../../hooks/useDB';
-import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, MessageSquare, Star, Settings, Plus, PlayCircle, Edit2, Trash2, HelpCircle, X, ChevronDown, CheckCircle } from 'lucide-react';
+import { Send, ArrowLeft, Users, Calendar, Video, FileText, CheckSquare, MessageSquare, Star, Settings, Plus, PlayCircle, Edit2, Trash2, HelpCircle, X, ChevronDown, CheckCircle, RefreshCw } from 'lucide-react';
 import { MockDB } from '../../services/MockDB';
 import ImageUploader from '../components/ImageUploader';
 import DoubtSupport from './DoubtSupport';
@@ -89,9 +89,116 @@ function TodaySessionTab({ batchId }: { batchId: string }) {
           </div>
         </form>
       ) : <div className="divide-y rounded-xl border bg-white">{sessions.map(s => <div key={s.id} className="p-4 flex justify-between"><div><p className="font-bold">{s.title || s.topic}</p><p className="text-sm text-slate-500">{s.platform || 'Meeting'} Â· {s.sessionDateTime ? new Date(s.sessionDateTime).toLocaleString() : `${s.date || ''} ${s.time || ''}`}</p></div><button onClick={() => { setEditing(s); setRecipientType(s.recipientType || s.recipientMode || 'all'); setRecipientIds(s.recipientIds || []); }} className="text-indigo-600 font-semibold text-sm">Edit</button></div>)}{sessions.length === 0 && <div className="p-10 text-center text-slate-500">No sessions published.</div>}</div>}
+
+      {/* Sync Batch History Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <RefreshCw className="w-5 h-5 text-indigo-600" /> Sync Batch History
+              </h3>
+              <button onClick={() => setShowSyncModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              {!syncStats ? (
+                <div className="space-y-6">
+                  <p className="text-sm text-slate-600">
+                    Synchronize historical batch resources (Study Materials, Recordings, Assignments, etc.) for students who joined late.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Select Target</label>
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-slate-50">
+                        <input type="radio" checked={syncTargetType === 'all'} onChange={() => setSyncTargetType('all')} className="w-4 h-4 text-indigo-600" />
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Entire Batch</p>
+                          <p className="text-xs text-slate-500">Sync missing history for all {batchStudents.length} enrolled students</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-slate-50">
+                        <input type="radio" checked={syncTargetType === 'selected'} onChange={() => setSyncTargetType('selected')} className="w-4 h-4 text-indigo-600" />
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Selected Student(s)</p>
+                          <p className="text-xs text-slate-500">Choose specific students to sync</p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {syncTargetType === 'selected' && (
+                    <div className="border rounded-xl p-3 max-h-48 overflow-y-auto space-y-2 bg-slate-50">
+                      {batchStudents.map(student => (
+                        <label key={student.id} className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={syncSelectedIds.includes(student.id)} 
+                            onChange={(e) => {
+                              if (e.target.checked) setSyncSelectedIds([...syncSelectedIds, student.id]);
+                              else setSyncSelectedIds(syncSelectedIds.filter(id => id !== student.id));
+                            }} 
+                            className="rounded text-indigo-600" 
+                          />
+                          <span className="text-sm font-medium text-slate-700">{student.name}</span>
+                        </label>
+                      ))}
+                      {batchStudents.length === 0 && <p className="text-xs text-slate-500">No students found.</p>}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 mb-4">
+                    This will synchronize historical content to <span className="font-bold text-slate-800">{syncStats.targetIds.length}</span> student(s).
+                  </p>
+                  <ul className="space-y-3">
+                    <li className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3"><PlayCircle className="w-5 h-5 text-indigo-500" /><span className="font-medium text-slate-700">Recordings</span></div>
+                      <span className="font-bold text-slate-800">{syncStats.recordings.length}</span>
+                    </li>
+                    <li className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3"><FileText className="w-5 h-5 text-emerald-500" /><span className="font-medium text-slate-700">Study Materials</span></div>
+                      <span className="font-bold text-slate-800">{syncStats.studyMaterials.length}</span>
+                    </li>
+                    <li className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3"><CheckSquare className="w-5 h-5 text-orange-500" /><span className="font-medium text-slate-700">Assignments</span></div>
+                      <span className="font-bold text-slate-800">{syncStats.assignments.length}</span>
+                    </li>
+                    <li className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3"><Video className="w-5 h-5 text-blue-500" /><span className="font-medium text-slate-700">Sessions</span></div>
+                      <span className="font-bold text-slate-800">{syncStats.sessions.length}</span>
+                    </li>
+                    <li className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-3"><MessageSquare className="w-5 h-5 text-purple-500" /><span className="font-medium text-slate-700">Notifications</span></div>
+                      <span className="font-bold text-slate-800">{syncStats.notifications.length}</span>
+                    </li>
+                  </ul>
+                  {syncStats.total === 0 && (
+                    <div className="p-4 bg-green-50 text-green-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 mt-4">
+                      <CheckCircle className="w-5 h-5" />
+                      All selected students are already fully synchronized!
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+              <button onClick={() => setShowSyncModal(false)} className="px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl">Cancel</button>
+              {!syncStats ? (
+                <button onClick={handleCalculateSync} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl">Review Changes</button>
+              ) : (
+                <button onClick={handleConfirmSync} disabled={syncStats.total === 0} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed">Proceed & Sync</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function CourseCalendarTab({ batchId }: { batchId: string }) {
   const db = useDB();
@@ -1571,6 +1678,84 @@ export default function BatchDashboard() {
   const batch = db.batches.find(b => b.id === batchId);
 
   const [activeTab, setActiveTab] = useState("Today's Session");
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncTargetType, setSyncTargetType] = useState<'all'|'selected'>('all');
+  const [syncSelectedIds, setSyncSelectedIds] = useState<string[]>([]);
+  const [syncStats, setSyncStats] = useState<any>(null);
+  
+  const handleSyncClick = () => {
+    setSyncTargetType('all');
+    setSyncSelectedIds([]);
+    setSyncStats(null);
+    setShowSyncModal(true);
+  };
+  
+  const batchStudents = enrolledStudentsForBatch(batch, db.students || []);
+
+  const calculateSyncStats = () => {
+    const targetIds = syncTargetType === 'all' ? batchStudents.map(s => s.id) : syncSelectedIds;
+    if (targetIds.length === 0) {
+      alert("No students selected for sync.");
+      return null;
+    }
+    
+    // Check items where recipientMode is 'selected' and the targetIds are not fully included.
+    const shouldUpdate = (item: any) => {
+      if ((item.recipientMode === 'selected' || item.recipientType === 'selected') && item.recipientIds) {
+        return targetIds.some(id => !item.recipientIds.includes(id));
+      }
+      return false;
+    };
+    
+    const recsToUpdate = (db.recordings || []).filter(r => r.batchId === batchId && shouldUpdate(r));
+    const matsToUpdate = (db.studyMaterials || []).filter(m => m.batchId === batchId && shouldUpdate(m));
+    const asgsToUpdate = (db.assignments || []).filter(a => a.batchId === batchId && shouldUpdate(a));
+    const sessToUpdate = (db.batchSessions || []).filter(s => s.batchId === batchId && shouldUpdate(s));
+    
+    const notifsToUpdate = (db.notifications || []).filter(n => 
+      n.target === 'Batch' && n.targetId === batchId && 
+      ['material_upload', 'class_scheduled', 'assignment_created'].includes(n.type || '') &&
+      shouldUpdate(n)
+    );
+    
+    return {
+      targetIds,
+      recordings: recsToUpdate,
+      studyMaterials: matsToUpdate,
+      assignments: asgsToUpdate,
+      sessions: sessToUpdate,
+      notifications: notifsToUpdate,
+      total: recsToUpdate.length + matsToUpdate.length + asgsToUpdate.length + sessToUpdate.length + notifsToUpdate.length
+    };
+  };
+
+  const handleCalculateSync = () => {
+    const stats = calculateSyncStats();
+    if (stats) setSyncStats(stats);
+  };
+
+  const handleConfirmSync = () => {
+    if (!syncStats) return;
+    
+    const updateItemArray = (collection: string, items: any[]) => {
+      items.forEach(item => {
+        const newIds = Array.from(new Set([...(item.recipientIds || []), ...syncStats.targetIds]));
+        MockDB.updateItem(collection, item.id, { recipientIds: newIds });
+      });
+    };
+    
+    updateItemArray('recordings', syncStats.recordings);
+    updateItemArray('studyMaterials', syncStats.studyMaterials);
+    updateItemArray('assignments', syncStats.assignments);
+    updateItemArray('batchSessions', syncStats.sessions);
+    updateItemArray('notifications', syncStats.notifications);
+    
+    alert(`Batch History synchronized successfully.\n\nSummary:\n${syncStats.recordings.length} Recordings\n${syncStats.studyMaterials.length} Study Materials\n${syncStats.assignments.length} Assignments\n${syncStats.notifications.length} Notifications\n${syncStats.sessions.length} Sessions`);
+    
+    setShowSyncModal(false);
+    setSyncStats(null);
+  };
+
 
   if (!batch) {
     return <div className="p-8">Batch not found. <Link to="/admin/batches" className="text-indigo-600 underline">Go Back</Link></div>;
