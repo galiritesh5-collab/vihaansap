@@ -238,8 +238,18 @@ export default function Reviews() {
                     <input type="text" value={editingReview.avatar || editingReview.image || ''} onChange={e => setEditingReview({...editingReview, avatar: e.target.value, image: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Course / Module</label>
-                    <input required type="text" value={editingReview.course || editingReview.module || ''} onChange={e => setEditingReview({...editingReview, course: e.target.value, module: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Designation</label>
+                    <input type="text" value={editingReview.designation || ''} onChange={e => setEditingReview({...editingReview, designation: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. SAP Consultant" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">📘 Course Name</label>
+                    <input type="text" value={editingReview.courseName || editingReview.course || editingReview.module || ''} onChange={e => setEditingReview({...editingReview, courseName: e.target.value, course: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. SAP FICO" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">👥 Batch Name</label>
+                    <input type="text" value={editingReview.batchName || ''} onChange={e => setEditingReview({...editingReview, batchName: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="e.g. Batch 12 - Jan 2026" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-6">

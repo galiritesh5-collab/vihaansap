@@ -31,6 +31,22 @@ export default function TestimonialCard({ review }: TestimonialCardProps) {
         <p className="text-slate-600 text-xs sm:text-sm leading-relaxed italic">
           "{review.feedback || review.content || review.text || review.review}"
         </p>
+
+        {/* Course & Batch Tags */}
+        {(review.courseName || review.course || review.batchName) && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {(review.courseName || review.course) && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[10px] font-bold text-blue-700 tracking-wide">
+                📘 {review.courseName || review.course}
+              </span>
+            )}
+            {review.batchName && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-[10px] font-bold text-emerald-700 tracking-wide">
+                👥 {review.batchName}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* User Information header footer */}

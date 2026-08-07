@@ -160,21 +160,19 @@ export default function CourseRatingModal({ batch, course, campaignId, onClose, 
                   Pre-filled from your previous review. You may update it below.
                 </p>
               )}
-              <div className="mb-6">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Course</label>
-                <select
-                  value={selectedBatchId}
-                  onChange={e => setSelectedBatchId(e.target.value)}
-                  disabled={!!batch || enrolledBatches.length === 0}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1763B6] bg-slate-50 text-sm font-semibold text-slate-700 disabled:opacity-75"
-                >
-                  {batch && !enrolledBatches.find(b => b.id === batch.id) && (
-                     <option value={batch.id}>{course?.name}</option>
-                  )}
-                  {enrolledBatches.map(b => (
-                    <option key={b.id} value={b.id}>{b.course}</option>
-                  ))}
-                </select>
+              <div className="mb-6 grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">📘 Course</label>
+                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm font-semibold text-slate-700 cursor-not-allowed opacity-85">
+                    {currentCourseName || 'Not assigned'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">👥 Batch</label>
+                  <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm font-semibold text-slate-700 cursor-not-allowed opacity-85">
+                    {currentBatch?.name || 'Not assigned'}
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">

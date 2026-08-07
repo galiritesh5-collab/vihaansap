@@ -31,6 +31,7 @@ export interface StudentReview {
   supportRating?: number;
   recommend?: boolean;
   batchId?: string;
+  batchName?: string;
   // Additional properties for backward compatibility with older review objects
   student?: string;
   studentName?: string;
