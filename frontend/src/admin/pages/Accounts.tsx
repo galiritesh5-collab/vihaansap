@@ -115,13 +115,13 @@ function StatusBadge({ status }: { status: Installment['status'] }) {
 // ─── Stats Cards ──────────────────────────────────────────────────────────────
 
 function StatsSection({ records }: { records: AccountRecord[] }) {
-  const totalRevenue = records.flatMap(r => r.installments)
+  const totalRevenue = records.flatMap(r => r.installments || [])
     .filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
-  const pending = records.flatMap(r => r.installments)
+  const pending = records.flatMap(r => r.installments || [])
     .filter(i => i.status === 'Pending').reduce((s, i) => s + (i.amount || 0), 0);
-  const overdue = records.flatMap(r => r.installments)
+  const overdue = records.flatMap(r => r.installments || [])
     .filter(i => i.status === 'Overdue').reduce((s, i) => s + (i.amount || 0), 0);
-  const totalFees = records.reduce((s, r) => s + r.netFee, 0);
+  const totalFees = records.reduce((s, r) => s + (r.netFee || 0), 0);
 
   const stats = [
     { label: 'Total Revenue Collected', value: formatINR(totalRevenue), icon: IndianRupee,  color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
@@ -152,14 +152,14 @@ function StatsSection({ records }: { records: AccountRecord[] }) {
 function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit: (r: AccountRecord) => void; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
 
-  const paidTotal = record.installments.filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
-  const pendingTotal = record.installments.filter(i => i.status !== 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
+  const paidTotal = (record.installments || []).filter(i => i.status === 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
+  const pendingTotal = (record.installments || []).filter(i => i.status !== 'Paid').reduce((s, i) => s + (i.amount || 0), 0);
 
   const markPaid = (instId: string) => {
     const paidDate = new Date().toISOString().split('T')[0];
     const updated = {
       ...record,
-      installments: record.installments.map(i =>
+      installments: (record.installments || []).map(i =>
         i.id === instId
           ? { ...i, status: 'Paid' as const, paidDate }
           : i
@@ -169,7 +169,7 @@ function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit
     
     if (window.confirm("Payment marked as Paid. Send WhatsApp confirmation?")) {
       const inst = updated.installments.find(i => i.id === instId);
-      const link = inst && record.studentPhone ? whatsAppLink(record.studentPhone, buildPaidWhatsAppMessage(record, inst)) : null;
+      const link = inst && record.studentPhone ? whatsAppLink(record.studentPhone, buildPaymentConfirmation(record, inst)) : null;
       if (link) {
         window.open(link, "_blank", "noopener,noreferrer");
       }
@@ -251,33 +251,19 @@ function RecordRow({ record, onEdit, onDelete }: { record: AccountRecord; onEdit
                 <div className="flex items-center gap-2">
                   <StatusBadge status={inst.status} />
                   {inst.status !== 'Paid' && (
-                    <>
-                      <button
-                        onClick={() => markPaid(inst.id)}
-                        title="Mark as Paid"
-                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </button>
-                      {record.studentPhone && (
-                        <a
-                          href={whatsAppLink(record.studentPhone, buildPaymentReminder(record, inst))}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Send WhatsApp Reminder"
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                      )}
-                    </>
+                    <button
+                      onClick={() => markPaid(inst.id)}
+                      title="Mark as Paid"
+                      className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-slate-600 bg-white hover:bg-slate-50 rounded-md transition-colors uppercase tracking-wider border border-slate-200 shadow-sm"
+                    >
+                      <CheckCircle className="w-3 h-3" /> Mark Paid
+                    </button>
                   )}
-                  {inst.status === 'Paid' && record.studentPhone && (() => {
-                    const link = whatsAppLink(record.studentPhone, buildPaidWhatsAppMessage(record, inst));
+                  {(() => {
+                    const link = record.studentPhone ? whatsAppLink(record.studentPhone, inst.status === 'Paid' ? buildPaymentConfirmation(record, inst) : buildPaymentReminder(record, inst)) : null;
                     return link ? (
-                      <a href={link} target="_blank" rel="noreferrer" title="Send WhatsApp Payment Confirmation" className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" onClick={e => e.stopPropagation()}>
-                        <MessageCircle className="w-4 h-4" />
+                      <a href={link} target="_blank" rel="noreferrer" title={inst.status === 'Paid' ? "Send Receipt" : "Send Reminder"} className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors uppercase tracking-wider border border-emerald-200 shadow-sm" onClick={e => e.stopPropagation()}>
+                        📱 WhatsApp
                       </a>
                     ) : null;
                   })()}
@@ -565,9 +551,11 @@ export default function Accounts() {
 
   const filtered = useMemo(() => {
     return accounts.filter(r => {
-      const matchSearch = !search || r.studentName.toLowerCase().includes(search.toLowerCase()) || r.courseName.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || 
+        (r.studentName || '').toLowerCase().includes(search.toLowerCase()) || 
+        (r.courseName || '').toLowerCase().includes(search.toLowerCase());
       const matchBatch = !filterBatch || r.batchId === filterBatch;
-      const matchStatus = !filterStatus || r.installments.some(i => i.status === filterStatus);
+      const matchStatus = !filterStatus || (r.installments && r.installments.some(i => i.status === filterStatus));
       return matchSearch && matchBatch && matchStatus;
     });
   }, [accounts, search, filterBatch, filterStatus]);

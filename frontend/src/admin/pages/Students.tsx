@@ -12,25 +12,36 @@ function whatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 }
 
-function buildWelcomeMessage(studentName: string, batchName: string, courseName: string): string {
-  return `Dear ${studentName}
+function buildEnrollmentWelcomeMessage(studentName: string, batchName: string, courseName: string): string {
+  const currentDate = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  });
+  
+  return `Hello Mr./Ms. ${studentName},
 
-Welcome to Sri Vihaan SAP Consulting!
+🎉 Congratulations!
 
-We are thrilled to have you join our
+You have been successfully enrolled in
+
+📘 Course:
 ${courseName}
-program.
 
-You have been successfully enrolled in:
-Batch: ${batchName}
+👥 Batch:
+${batchName}
 
-Your journey to mastering SAP begins now.
+📅 Enrollment Date:
+${currentDate}
 
-Please log in to your student portal to access your study materials and live class schedule.
+Welcome to Sri Vihaan SAP Consulting.
 
-For any assistance during your course, please contact us.
+We are excited to have you as part of our learning community.
 
-Happy Learning!`;
+You will receive complete guidance throughout your SAP journey.
+
+If you have any questions, please feel free to contact us anytime.
+
+Best Regards,
+Sri Vihaan SAP Consulting`;
 }
 
 export default function Students() {
@@ -56,14 +67,12 @@ export default function Students() {
   // Edit states
   const [editCourse, setEditCourse] = useState('');
   const [editBatch, setEditBatch] = useState('');
-    const [editCompletedModules, setEditCompletedModules] = useState('');
   const [editCourseStatus, setEditCourseStatus] = useState('In Progress');
 
   const handleSelectStudent = (student: any) => {
     setSelectedStudent(student);
     setEditCourse(student.course || '');
     setEditBatch(student.batch || '');
-        setEditCompletedModules((student.completedModules || []).join(', '));
     setEditCourseStatus(student.courseStatus || 'In Progress');
   };
 
@@ -81,11 +90,9 @@ export default function Students() {
 
   const handleSaveChanges = async () => {
     if (!selectedStudent) return;
-    const modulesArray = editCompletedModules.split(',').map((m: string) => m.trim()).filter(Boolean);
     const updatePayload = {
       course: editCourse,
       batch: editBatch,
-            completedModules: modulesArray,
       courseStatus: editCourseStatus,
     };
 
@@ -126,15 +133,13 @@ export default function Students() {
       ...updatePayload,
     });
     alert('Student profile updated successfully!');
+  };
 
-    if (selectedStudent.batch !== editBatch && editBatch) {
-      if (window.confirm("Student enrolled in new batch. Send welcome WhatsApp?")) {
-        if (selectedStudent.phone) {
-          window.open(whatsAppLink(selectedStudent.phone, buildWelcomeMessage(selectedStudent.name, editBatch, editCourse)), "_blank");
-        } else {
-          alert("Student does not have a phone number recorded.");
-        }
-      }
+  const handleSendWelcome = () => {
+    if (selectedStudent?.phone && editBatch && editCourse) {
+      window.open(whatsAppLink(selectedStudent.phone, buildEnrollmentWelcomeMessage(selectedStudent.name, editBatch, editCourse)), "_blank");
+    } else {
+      alert("Please ensure the student has a phone number, course, and batch assigned.");
     }
   };
 
@@ -323,9 +328,6 @@ export default function Students() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Completed Modules (comma separated)</label>
-                  <input type="text" value={editCompletedModules} onChange={e => setEditCompletedModules(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm mb-4" placeholder="e.g. Module 1, Module 2" />
-                  
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Course Status</label>
                   <select value={editCourseStatus} onChange={e => setEditCourseStatus(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm mb-4">
                     <option value="Not Started">Not Started</option>
@@ -333,13 +335,17 @@ export default function Students() {
                     <option value="Completed">Completed</option>
                     <option value="Dropped">Dropped</option>
                   </select>
-
-
                 </div>
 
                 <button onClick={handleSaveChanges} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors mt-2">
                   Save Changes
                 </button>
+                
+                {editCourse && editBatch && (
+                  <button onClick={handleSendWelcome} className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white py-2.5 rounded-lg text-sm font-semibold transition-colors mt-2 flex items-center justify-center gap-2 shadow-sm">
+                    📱 Send WhatsApp Welcome
+                  </button>
+                )}
               </div>
 
               <div className="space-y-4">
