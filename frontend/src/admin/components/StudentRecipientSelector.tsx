@@ -1,6 +1,6 @@
 type SelectableStudent = {
   id: string;
-  uid?: string;
+  uid?: string; // Firebase Auth UID — MUST be used for Firestore rule checks
   name?: string;
   email?: string;
 };
@@ -12,6 +12,21 @@ interface StudentRecipientSelectorProps {
   emptyMessage?: string;
 }
 
+/**
+ * Returns the primary ID to store in recipientIds for Firestore.
+ * MUST be the Firebase Auth UID (student.uid) so that Firestore rules can verify
+ * `request.auth.uid in resource.data.recipientIds`.
+ * Falls back to student.id only if uid is not yet populated (legacy records).
+ */
+function primaryRecipientId(student: SelectableStudent): string {
+  return student.uid || student.id;
+}
+
+/** Returns all IDs for a student (uid + id) to support checking existing selectedIds. */
+function allStudentIds(student: SelectableStudent): string[] {
+  return [student.uid, student.id].filter(Boolean) as string[];
+}
+
 /** Shared explicit-recipient picker. "All Students" remains controlled by the parent form. */
 export default function StudentRecipientSelector({
   students,
@@ -19,32 +34,30 @@ export default function StudentRecipientSelector({
   onChange,
   emptyMessage = 'No students enrolled.',
 }: StudentRecipientSelectorProps) {
-  const studentPrimaryIds = Array.from(new Set(students.map(student => student.id)));
   const selectedIdSet = new Set(selectedIds);
-  const selectedCount = studentPrimaryIds.filter(id => {
-    const student = students.find(s => s.id === id);
-    const ids = [student?.id, student?.uid].filter(Boolean) as string[];
-    return ids.some(i => selectedIdSet.has(i));
-  }).length;
-  const allSelected = studentPrimaryIds.length > 0 && selectedCount === studentPrimaryIds.length;
+  const selectedCount = students.filter(s => allStudentIds(s).some(id => selectedIdSet.has(id))).length;
+  const allSelected = students.length > 0 && selectedCount === students.length;
 
   const toggleAll = () => {
     if (allSelected) {
       onChange([]);
     } else {
-      const allIds = students.flatMap(s => [s.id, s.uid].filter(Boolean) as string[]);
-      onChange(Array.from(new Set(allIds)));
+      // Store ONLY the Firebase Auth UID (primaryRecipientId) per student.
+      // This ensures Firestore rules can verify request.auth.uid in resource.data.recipientIds.
+      const primaryIds = students.map(s => primaryRecipientId(s));
+      onChange(Array.from(new Set(primaryIds)));
     }
   };
 
   const toggleStudent = (student: SelectableStudent) => {
-    const ids = [student.id, student.uid].filter(Boolean) as string[];
-    const isCurrentlySelected = ids.some(id => selectedIdSet.has(id));
+    const isCurrentlySelected = allStudentIds(student).some(id => selectedIdSet.has(id));
     const nextIds = new Set(selectedIds);
     if (isCurrentlySelected) {
-      ids.forEach(id => nextIds.delete(id));
+      // Remove all known IDs for this student to clean up any legacy id/uid mixtures
+      allStudentIds(student).forEach(id => nextIds.delete(id));
     } else {
-      ids.forEach(id => nextIds.add(id));
+      // Add ONLY the Firebase Auth UID (primaryRecipientId) so Firestore rule check works
+      nextIds.add(primaryRecipientId(student));
     }
     onChange(Array.from(nextIds));
   };

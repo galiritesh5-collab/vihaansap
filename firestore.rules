@@ -78,7 +78,10 @@ service cloud.firestore {
       allow delete: if admin();
     }
     match /doubtReplies/{document} {
-      allow read: if admin() || (signedIn() && resource.data.authorId == request.auth.uid) || isAssignedMentor(resource.data.batchId);
+      allow read: if admin()
+        || isAssignedMentor(resource.data.batchId)
+        || (signedIn() && resource.data.authorId == request.auth.uid)
+        || (signedIn() && resource.data.studentId == request.auth.uid);
       allow create: if admin() || isAssignedMentor(request.resource.data.batchId) || (signedIn() && request.resource.data.authorId == request.auth.uid);
       allow update: if admin() || isAssignedMentor(resource.data.batchId);
       allow delete: if admin();
