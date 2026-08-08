@@ -33,9 +33,10 @@ service cloud.firestore {
     // Returns true if the content targets the current user (either all-batch or selected)
     function isBatchContentVisibleToMe(batchId) {
       return isEnrolledInBatch(batchId) && (
+        (!('recipientMode' in resource.data) && !('recipientType' in resource.data)) ||
         resource.data.recipientMode == 'all' ||
         resource.data.recipientType == 'all' ||
-        request.auth.uid in resource.data.recipientIds
+        ('recipientIds' in resource.data && request.auth.uid in resource.data.recipientIds)
       );
     }
 
