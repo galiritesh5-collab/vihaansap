@@ -102,6 +102,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           FirestoreDBService.subscribeToAll();
         }
 
+        // Mentor authorization is deliberately handled by the dedicated mentor
+        // endpoint after Google sign-in. Do not run the legacy users.role lookup
+        // here: it reports "student" for mentors and can race the portal check.
+        if (isMentorPortal) {
+          if (unsubStudentSnapshot.current) {
+            unsubStudentSnapshot.current();
+            unsubStudentSnapshot.current = null;
+          }
+          setStudentProfile(null);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+
         let role: 'admin' | 'mentor' | 'student' = 'student';
 
         // ── Fast path: Admin email check (no network needed) ──────────────
@@ -132,16 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUserRole(role);
-
-        if (isMentorPortal) {
-          if (unsubStudentSnapshot.current) {
-            unsubStudentSnapshot.current();
-            unsubStudentSnapshot.current = null;
-          }
-          setStudentProfile(null);
-          setLoading(false);
-          return;
-        }
 
         if (role === 'admin') {
           await MockDB.loadAdminData();
