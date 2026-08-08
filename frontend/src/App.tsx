@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import DemoModal from './components/DemoModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Pages
 import Home from './pages/Home';
@@ -60,6 +61,10 @@ const ServerAccessAdmin = lazy(() => import('./admin/pages/ServerAccessAdmin'));
 const BrandingAdmin = lazy(() => import('./admin/pages/BrandingAdmin'));
 const AccountsAdmin = lazy(() => import('./admin/pages/Accounts'));
 const AdminRoleManagement = lazy(() => import('./admin/pages/RoleManagement'));
+const MentorLogin = lazy(() => import('./mentor/MentorLogin'));
+const MentorLayout = lazy(() => import('./mentor/MentorPortal').then(module => ({ default: module.MentorLayout })));
+const MentorDashboard = lazy(() => import('./mentor/MentorPortal').then(module => ({ default: module.MentorDashboard })));
+const MentorBatch = lazy(() => import('./mentor/MentorPortal').then(module => ({ default: module.MentorBatch })));
 
 // Helper component to scroll window to top on route change
 function ScrollToTop() {
@@ -127,6 +132,7 @@ export default function App() {
   };
 
   return (
+    <ErrorBoundary>
     <Router>
       <ScrollToTop />
       
@@ -174,6 +180,11 @@ export default function App() {
         </Route>
         {/* Admin Portal Routes */}
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/mentor" element={<MentorLogin />} />
+        <Route path="/mentor" element={<MentorLayout />}>
+          <Route path="dashboard" element={<MentorDashboard />} />
+          <Route path="batches/:batchId" element={<MentorBatch />} />
+        </Route>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardNew />} />
@@ -200,5 +211,6 @@ export default function App() {
       {/* Book Free Demo Modal Dialog */}
       <DemoModal isOpen={demoModalOpen} onClose={() => setDemoModalOpen(false)} />
     </Router>
+    </ErrorBoundary>
   );
 }

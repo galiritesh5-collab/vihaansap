@@ -20,9 +20,11 @@ export default function Dashboard() {
   
   // Find sessions for these batches
   const mySessions = db.batchSessions?.filter(s => myBatches.some(b => b.id === s.batchId) && isTargetedToStudent(s, studentProfile)) || [];
+  const todayKey = new Date().toISOString().slice(0, 10);
   const upcomingSessions = mySessions.filter(s => {
     const scheduled = new Date(s.sessionDateTime || `${s.date || ''} ${s.time || ''}`).getTime();
-    return s.batchId === activeBatch?.id && (s.status === 'Live' || s.status === 'Upcoming') && Number.isFinite(scheduled) && Date.now() <= scheduled + 4 * 60 * 60 * 1000;
+    const isToday = (s.sessionDateTime || s.date || '').slice(0, 10) === todayKey;
+    return (s.status === 'Live' || s.status === 'Upcoming') && Number.isFinite(scheduled) && (isToday || (s.status === 'Live' && Date.now() <= scheduled + 4 * 60 * 60 * 1000));
   });
   const pastSessions = mySessions.filter(s => s.status === 'Completed');
 
@@ -233,6 +235,7 @@ export default function Dashboard() {
             <div className="p-4 sm:p-6">
               {upcomingSessions.length > 0 ? upcomingSessions.slice(0, 2).map(cls => {
                 const batch = db.batches.find(b => b.id === cls.batchId);
+                const recording = (db.recordings || []).find((item: any) => item.batchId === cls.batchId && (item.sessionId === cls.id || item.title === cls.title || item.title === cls.topic));
                 return (
                 <div key={cls.id} className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl border border-orange-100 bg-orange-50/50 mb-4 last:mb-0">
                   <div className="flex items-center gap-4">
@@ -242,8 +245,9 @@ export default function Dashboard() {
                     <div>
                       <h4 className="font-bold text-slate-800">{cls.topic}</h4>
                       <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                        <span className="font-medium text-slate-700">{cls.date}</span> at <span className="font-medium text-slate-700">{cls.time}</span> &bull; {batch?.course}
+                        <span className="font-medium text-slate-700">{cls.date || new Date(cls.sessionDateTime).toLocaleDateString()}</span> at <span className="font-medium text-slate-700">{cls.time || new Date(cls.sessionDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> &bull; {batch?.course} &bull; Mentor: {batch?.mentor || 'Assigned mentor'}
                       </p>
+                      <p className="mt-1 text-xs font-semibold text-orange-700">{cls.status || 'Upcoming'}{recording || cls.recordingUrl ? ' • Recording available' : ''}</p>
                     </div>
                   </div>
                   {cls.meetingLink ? (
@@ -255,6 +259,7 @@ export default function Dashboard() {
                       Link Pending
                     </button>
                   )}
+                  {(recording?.videoUrl || cls.recordingUrl) && <a href={recording?.videoUrl || cls.recordingUrl} target="_blank" rel="noreferrer" className="w-full sm:w-auto px-4 py-2 border border-orange-300 text-orange-700 text-sm font-bold rounded-lg text-center">View Recording</a>}
                 </div>
               )}) : (
                 <p className="text-slate-500 text-sm">No upcoming live sessions.</p>

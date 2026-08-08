@@ -49,7 +49,7 @@ export default function ServerAccessAdmin() {
       }
     });
     return () => unsubscribe();
-  }, [mockDb.serverEnquiries]);
+  }, []);
 
   const handleSaveConfig = async () => {
     setIsSaving(true);

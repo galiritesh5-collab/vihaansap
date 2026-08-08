@@ -9,8 +9,20 @@ import { useAuth } from '../../contexts/AuthContext';
 import { BatchPlannerWeek, BatchSession, StudyMaterial, CourseRating, SessionFeedback } from '../../types';
 import { enrolledStudentsForBatch } from '../../utils/recipientTargeting';
 
-function TodaySessionTab({ batchId }: { batchId: string }) {
+function TodaySessionTab({ batchId, sync }: { batchId: string; sync: any }) {
   const db = useDB();
+  const {
+    showSyncModal,
+    setShowSyncModal,
+    syncTargetType,
+    setSyncTargetType,
+    syncSelectedIds,
+    setSyncSelectedIds,
+    syncStats,
+    handleCalculateSync,
+    handleConfirmSync,
+    batchStudents,
+  } = sync;
   const batch = db.batches?.find(b => b.id === batchId);
   const students = enrolledStudentsForBatch(batch, db.students || []);
   const sessions = (db.batchSessions?.filter(s => s.batchId === batchId) || [])
@@ -498,14 +510,17 @@ function OverviewTab({ batchId }: { batchId: string }) {
   const batch = db.batches.find(b => b.id === batchId);
   if (!batch) return null;
 
-  const students = db.students.filter(s => s.batch === batch.name);
+  const students = enrolledStudentsForBatch(batch, db.students || []);
+  const activeStudents = students.filter(s => s.status === 'Active').length;
   const materials = db.studyMaterials?.filter(m => m.batchId === batchId) || [];
   const recordings = db.recordings?.filter(r => r.batchId === batchId) || [];
   const doubts = db.doubts?.filter(d => d.batchId === batchId) || [];
   const pendingDoubts = doubts.filter(d => d.status === 'Pending' || d.status === 'Open').length;
   
   const sessions = db.batchSessions?.filter(s => s.batchId === batchId) || [];
-  const todaySession = sessions.find(s => s.status === 'Live') || sessions.find(s => s.status === 'Upcoming');
+  const now = Date.now();
+  const upcomingSessions = sessions.filter(s => new Date(s.sessionDateTime || `${s.date || ''} ${s.time || ''}`).getTime() >= now).sort((a, b) => new Date(a.sessionDateTime || a.date || 0).getTime() - new Date(b.sessionDateTime || b.date || 0).getTime());
+  const todaySession = sessions.find(s => s.status === 'Live') || upcomingSessions[0];
   
   const notifications = db.notifications?.filter(n => n.target === 'Batch' && n.targetId === batchId) || [];
   const latestAnnouncement = notifications.length > 0 ? notifications[notifications.length - 1] : null;
@@ -516,15 +531,31 @@ function OverviewTab({ batchId }: { batchId: string }) {
         <h3 className="text-lg font-bold text-slate-800">Batch Overview</h3>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Students</p>
           <p className="text-2xl font-black text-indigo-600">{students.length}</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Active Students</p>
+          <p className="text-2xl font-black text-emerald-600">{activeStudents}</p>
         </div>
 
         <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Pending Doubts</p>
           <p className="text-2xl font-black text-orange-500">{pendingDoubts}</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Recordings</p>
+          <p className="text-2xl font-black text-violet-600">{recordings.length}</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Upcoming Sessions</p>
+          <p className="text-2xl font-black text-sky-600">{upcomingSessions.length}</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Batch Status</p>
+          <p className="text-sm font-black text-slate-700 mt-2">{batch.status || 'Not set'}</p>
         </div>
         <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Study Materials</p>
@@ -537,7 +568,7 @@ function OverviewTab({ batchId }: { batchId: string }) {
              <h4 className="font-bold text-slate-800 mb-3">Today's Class</h4>
              {todaySession ? (
                <div>
-                 <p className="text-sm font-bold text-indigo-600">{todaySession.topic}</p>
+                 <p className="text-sm font-bold text-indigo-600">{todaySession.title || todaySession.topic}</p>
                  <p className="text-xs text-slate-500 mt-1">{todaySession.date} &bull; {todaySession.time}</p>
                  <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wider rounded">{todaySession.status}</span>
                </div>
@@ -879,6 +910,7 @@ function LiveClassesTab({ batchId }: { batchId: string }) {
   const [editing, setEditing] = useState<any | null>(null);
   const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState('');
 
   const openNew = () => {
     setEditing({ title: '', meetingLink: '', platform: 'Zoom', scheduledAt: '' });
@@ -1344,14 +1376,16 @@ function RecordingsTab({ batchId }: { batchId: string }) {
   const [editing, setEditing] = useState<any | null>(null);
   const [recipientMode, setRecipientMode] = useState<'all' | 'selected'>('all');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState('');
 
   const toggleStudent = (id: string) => {
     setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
+      setSaveError('');
       const recData = {
         ...editing,
         batchId,
@@ -1360,7 +1394,13 @@ function RecordingsTab({ batchId }: { batchId: string }) {
         recipientIds: recipientMode === 'all' ? [] : selectedStudentIds,
       };
       if (editing.id) {
-        MockDB.updateItem('recordings', editing.id, recData);
+        try {
+          await MockDB.updateItem('recordings', editing.id, recData);
+        } catch (error) {
+          console.error('Unable to save recording thumbnail:', error);
+          setSaveError('The thumbnail was uploaded, but the recording could not be saved. Please retry.');
+          return;
+        }
       } else {
         const batchObj = db.batches.find(b => b.id === batchId);
         const newRec = {
@@ -1370,7 +1410,13 @@ function RecordingsTab({ batchId }: { batchId: string }) {
           visibility: editing.visibility || 'Students',
           thumbnail: editing.thumbnail || '/assets/course-default.png'
         };
-        MockDB.addItem('recordings', newRec);
+        try {
+          await MockDB.addItem('recordings', newRec);
+        } catch (error) {
+          console.error('Unable to create recording:', error);
+          setSaveError('The recording could not be saved. Please retry.');
+          return;
+        }
         if (newRec.visibility === 'Students') {
           MockDB.addItem('notifications', {
             title: "New Class Recording",
@@ -1485,6 +1531,7 @@ function RecordingsTab({ batchId }: { batchId: string }) {
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
+            {saveError && <p className="mr-auto text-sm text-red-600">{saveError}</p>}
             <button type="button" onClick={() => setEditing(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
             <button type="submit" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">Save Recording</button>
           </div>
@@ -1495,7 +1542,7 @@ function RecordingsTab({ batchId }: { batchId: string }) {
         {recordings.map(rec => (
           <div key={rec.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
             <div className="h-32 bg-slate-100 relative">
-              <img src={rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+              {rec.thumbnail ? <img src={rec.thumbnail} alt={rec.title} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} /> : <div className="w-full h-full grid place-items-center text-xs font-semibold text-slate-400">No thumbnail</div>}
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                 <a href={rec.videoUrl} target="_blank" rel="noreferrer" className="bg-white/90 text-slate-900 p-3 rounded-full hover:scale-110 transition-transform">
                   <PlayCircle className="w-6 h-6" />
@@ -1737,7 +1784,7 @@ export default function BatchDashboard() {
   const handleConfirmSync = () => {
     if (!syncStats) return;
     
-    const updateItemArray = (collection: string, items: any[]) => {
+    const updateItemArray = (collection: 'recordings' | 'studyMaterials' | 'assignments' | 'batchSessions' | 'notifications', items: any[]) => {
       items.forEach(item => {
         const newIds = Array.from(new Set([...(item.recipientIds || []), ...syncStats.targetIds]));
         MockDB.updateItem(collection, item.id, { recipientIds: newIds });
@@ -1802,7 +1849,7 @@ export default function BatchDashboard() {
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm min-h-[500px]">
         {activeTab === 'Overview' && <OverviewTab batchId={batchId as string} />}
-        {activeTab === "Today's Session" && <TodaySessionTab batchId={batchId as string} />}
+        {activeTab === "Today's Session" && <TodaySessionTab batchId={batchId as string} sync={{ showSyncModal, setShowSyncModal, syncTargetType, setSyncTargetType, syncSelectedIds, setSyncSelectedIds, syncStats, handleCalculateSync, handleConfirmSync, batchStudents }} />}
         {activeTab === 'Course Calendar' && <CourseCalendarTab batchId={batchId as string} />}
         {activeTab === 'Study Materials' && <StudyMaterialsTab batchId={batchId as string} />}
         {activeTab === 'Students' && <StudentsTab batchId={batchId as string} />}

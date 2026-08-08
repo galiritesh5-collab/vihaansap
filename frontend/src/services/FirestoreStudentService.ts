@@ -36,11 +36,13 @@ export class FirestoreStudentService {
     }
 
     const ref = doc(db, this.COLLECTION, uid);
+    const existing = await getDoc(ref);
     await setDoc(
       ref,
       {
         ...data,
         uid,
+        ...(existing.exists() || data.createdAt ? {} : { createdAt: serverTimestamp() }),
         updatedAt: serverTimestamp(),
       },
       { merge: true }   // merge = never overwrite fields that already exist and aren't in `data`

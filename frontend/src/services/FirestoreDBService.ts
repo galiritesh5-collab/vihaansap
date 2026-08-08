@@ -110,15 +110,21 @@ export class FirestoreDBService {
       this.unsubscribers.push(unsubBatches);
     }
 
-    // 2. Fetch all other collections.
+    // 2. Students receive only the collections used by their portal. Admins
+    // retain the existing full administrative subscriptions.
     const BATCH_DEPENDENT_COLLECTIONS = ['batchPlanner', 'batchSessions', 'liveClasses', 'studyMaterials', 'schedules', 'recordings', 'assignments'];
+    const STUDENT_COLLECTIONS = new Set(['reviews', 'reviewCampaigns', 'notifications', 'doubts', 'doubtReplies', 'events', 'courses', 'blogs', 'faqs', 'courseRatings']);
     for (const colName of COLLECTIONS_TO_SYNC) {
       if (!isAdmin && colName === 'batches') continue; // Handled specially above for students
       if (!isAdmin && BATCH_DEPENDENT_COLLECTIONS.includes(colName)) continue; // Handled specially for students
+      if (!isAdmin && !STUDENT_COLLECTIONS.has(colName)) continue;
       
       const colRef = collection(db, colName as string);
+      const collectionQuery = !isAdmin && (colName === 'notifications' || colName === 'reviewCampaigns')
+        ? query(colRef, where('recipientIds', 'array-contains', user.uid))
+        : colRef;
       const unsub = onSnapshot(
-        colRef,
+        collectionQuery,
         (snapshot) => {
           const firestoreData: any[] = snapshot.docs.map((d) => ({
             id: d.id,

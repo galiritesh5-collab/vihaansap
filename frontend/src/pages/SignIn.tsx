@@ -11,14 +11,10 @@ export default function SignIn() {
 
   useEffect(() => {
     if (currentUser && userRole) {
-      if (userRole === 'mentor') {
-        navigate('/admin/dashboard', { replace: true });
+      if (studentProfile?.profileCompleted) {
+        navigate('/student/dashboard', { replace: true });
       } else {
-        if (studentProfile?.profileCompleted) {
-          navigate('/student/dashboard', { replace: true });
-        } else {
-          navigate('/student/complete-profile', { replace: true });
-        }
+        navigate('/student/complete-profile', { replace: true });
       }
     }
   }, [currentUser, userRole, studentProfile, navigate]);
@@ -74,14 +70,14 @@ export default function SignIn() {
           </button>
 
           <p className="text-center text-xs text-slate-400 px-2">
-            Students and mentors sign in securely using their Google account.
+            Students sign in securely using their Google account.
           </p>
         </div>
 
         {/* Footer note - no public admin link */}
         <div className="pt-4 text-center border-t border-slate-100">
           <p className="text-[11px] text-slate-400">
-            Mentor access is managed by your Administrator.
+            Mentors should sign in at /mentor.
           </p>
         </div>
 

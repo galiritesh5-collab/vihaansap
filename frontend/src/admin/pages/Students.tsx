@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, MoreVertical, X, CheckCircle, Ban } from 'lucide-react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
@@ -44,6 +44,19 @@ Best Regards,
 Sri Vihaan SAP Consulting`;
 }
 
+function timestampValue(value: any): number {
+  if (!value) return 0;
+  if (typeof value?.toDate === 'function') return value.toDate().getTime();
+  if (typeof value?.seconds === 'number') return value.seconds * 1000;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+const isRecentlyJoined = (student: any) => {
+  const joinedAt = timestampValue(student.createdAt || student.joinedAt || student.date);
+  return joinedAt > 0 && Date.now() - joinedAt <= 7 * 24 * 60 * 60 * 1000;
+};
+
 export default function Students() {
     const db = useDB();
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,7 +65,7 @@ export default function Students() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterBackground, setFilterBackground] = useState('');
   
-  const filteredStudents = db.students.filter(student => {
+  const filteredStudents = useMemo(() => db.students.filter(student => {
     const matchesSearch = student.name?.toLowerCase().includes(searchTerm.toLowerCase()) || student.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCourse = filterCourse ? student.course === filterCourse : true;
     const matchesBatch = filterBatch ? student.batch === filterBatch : true;
@@ -60,7 +73,19 @@ export default function Students() {
     const matchesBg = filterBackground ? student.background === filterBackground : true;
     
     return matchesSearch && matchesCourse && matchesBatch && matchesStatus && matchesBg;
-  });
+  }).sort((a: any, b: any) => {
+    const loginDiff = timestampValue(b.lastLogin) - timestampValue(a.lastLogin);
+    if (loginDiff) return loginDiff;
+    return timestampValue(b.createdAt || b.joinedAt || b.date) - timestampValue(a.createdAt || a.joinedAt || a.date);
+  }), [db.students, searchTerm, filterCourse, filterBatch, filterStatus, filterBackground]);
+
+  useEffect(() => {
+    const existing = new Set((db.notifications || []).filter((n: any) => n.type === 'student_joined').map((n: any) => n.studentId));
+    db.students.filter(isRecentlyJoined).filter((student: any) => !existing.has(student.id || student.uid)).forEach((student: any) => {
+      const studentId = student.id || student.uid;
+      MockDB.addItem('notifications', { id: `student_joined_${studentId}`, type: 'student_joined', studentId, target: 'Admin', targetId: 'admin', title: 'New student joined', message: `${student.name || student.email || 'A student'} joined the platform.`, date: new Date().toISOString().slice(0, 10), createdAt: new Date().toISOString() });
+    });
+  }, [db.students, db.notifications]);
 
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   
@@ -201,12 +226,13 @@ export default function Students() {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Course/Batch</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Last Login</th>
                   <th className="px-6 py-4 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredStudents.length === 0 && (
-                  <tr><td colSpan={5} className="p-8 text-center text-slate-500">No students found matching filters.</td></tr>
+                  <tr><td colSpan={6} className="p-8 text-center text-slate-500">No students found matching filters.</td></tr>
                 )}
                 {filteredStudents.map(student => (
                   <tr 
@@ -225,7 +251,7 @@ export default function Students() {
                         )}
                         <div>
                           <p className="text-sm font-bold text-slate-800">{student.name}</p>
-                          <p className="text-xs text-slate-500">{student.role || 'Student'}</p>
+                          <p className="text-xs text-slate-500 flex items-center gap-2"><span>{student.role || 'Student'}</span>{isRecentlyJoined(student) && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700">New</span>}</p>
                         </div>
                       </div>
                     </td>
@@ -244,6 +270,7 @@ export default function Students() {
                       <p className="text-sm font-medium text-slate-800">{student.course}</p>
                       <p className="text-xs text-slate-500">{student.batch}</p>
                     </td>
+                    <td className="px-6 py-4 text-xs text-slate-500">{timestampValue(student.lastLogin) ? new Date(timestampValue(student.lastLogin)).toLocaleString() : 'Never logged in'}</td>
                     <td className="px-6 py-4 text-right">
                       <button className="text-slate-400 hover:text-slate-600">
                         <MoreVertical className="w-5 h-5" />

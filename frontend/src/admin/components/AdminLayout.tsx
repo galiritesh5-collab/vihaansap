@@ -16,7 +16,7 @@ export default function AdminLayout() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const isLoading = authLoading;
-  const isAuthorized = currentUser && (userRole === 'admin' || userRole === 'mentor');
+  const isAuthorized = currentUser && userRole === 'admin';
 
   if (isLoading) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center">Loading...</div>;
@@ -24,15 +24,6 @@ export default function AdminLayout() {
 
   if (!isAuthorized) {
     return <Navigate to="/admin-login" replace />;
-  }
-
-  // Mentor Route Guard
-  if (currentUser && userRole === 'mentor') {
-    const allowedPrefixes = ['/admin/dashboard', '/admin/batches', '/admin/notifications', '/admin/doubts'];
-    const isAllowed = allowedPrefixes.some(prefix => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
-    if (!isAllowed) {
-      return <Navigate to="/admin/dashboard" replace />;
-    }
   }
 
   const handleLogout = async () => {
@@ -59,9 +50,7 @@ export default function AdminLayout() {
     { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
-  const navItems = (currentUser && userRole === 'mentor')
-    ? allNavItems.filter(item => ['Dashboard', 'Batches', 'Notifications', 'Doubt Support'].includes(item.name))
-    : allNavItems;
+  const navItems = allNavItems;
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans">

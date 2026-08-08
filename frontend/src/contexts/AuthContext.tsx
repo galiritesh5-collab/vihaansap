@@ -94,9 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(user);
 
       if (user) {
+        // /mentor uses its own Firestore-backed authorization flow. It must not
+        // start the student/MockDB subscriptions or create/check a student record.
+        const isMentorPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/mentor');
         // Start collection-level Firestore listeners (courses, batches, etc.)
-        if (!unsubFirestore) {
-          unsubFirestore = FirestoreStudentService.subscribeToAll();
+        if (!isMentorPortal && !unsubFirestore) {
           FirestoreDBService.subscribeToAll();
         }
 
@@ -131,6 +133,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUserRole(role);
 
+        if (isMentorPortal) {
+          if (unsubStudentSnapshot.current) {
+            unsubStudentSnapshot.current();
+            unsubStudentSnapshot.current = null;
+          }
+          setStudentProfile(null);
+          setLoading(false);
+          return;
+        }
+
         if (role === 'admin') {
           await MockDB.loadAdminData();
           // Clean up any leftover student listener from a previous session
@@ -142,32 +154,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
         } else if (role === 'student') {
           // ── Firestore: check/create the student document ───────────────
+          // SECURITY: Only create a student record if the user is already
+          // pre-enrolled (exists in Firestore). If not, sign them out gracefully.
+          // This prevents arbitrary Google accounts from flooding the student list.
           try {
             const existing = await FirestoreStudentService.getStudent(user.uid);
 
             if (!existing) {
-              // First ever login — create a minimal document
-              const newStudentData = {
-                uid: user.uid,
-                name: user.displayName || '',
-                email: user.email || '',
-                avatar: user.photoURL || '',
-                photoURL: user.photoURL || '',
-                profileCompleted: false,
-                loginMethod: 'Google',
-                status: 'Pending',
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString(),
-                loginCount: 1,
-              };
-
-              await FirestoreStudentService.upsertStudent(user.uid, newStudentData);
-
-              // Also add to backend/db.json so Admin Students page sees the new student
-              await MockDB.addItem('students', { id: user.uid, ...newStudentData, role: 'Student' });
-
-              // Set profile immediately (profileCompleted = false → CompleteProfile will show)
-              setStudentProfile({ id: user.uid, ...newStudentData });
+              // Unknown Google user — not pre-enrolled. Sign them out and notify them.
+              console.warn(`[AuthContext] Unrecognised user ${user.email} — not pre-enrolled. Signing out.`);
+              await signOut(auth!);
+              alert(
+                'Access Denied: Your account is not enrolled in this platform.\n\n' +
+                'Please contact Sri Vihaan SAP Consulting to get access.\n' +
+                'WhatsApp: +91 98765 43210'
+              );
+              setCurrentUser(null);
+              setStudentProfile(null);
+              setUserRole(null);
+              setLoading(false);
+              return;
             } else {
               // Returning student — set profile immediately from the fetched doc
               setStudentProfile(existing);

@@ -1,7 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Auth helpers ────────────────────────────────────────────────────────
     function signedIn() { return request.auth != null; }
+
     function admin() {
       return signedIn() && request.auth.token.email in [
         'riteshgali45@gmail.com',
@@ -9,34 +12,159 @@ service cloud.firestore {
       ];
     }
 
-    match /courses/{document} { allow read: if true; allow write: if admin(); }
-    match /blogs/{document} { allow read: if true; allow write: if admin(); }
-    match /reviews/{document} { allow read: if true; allow create: if signedIn(); allow update, delete: if admin(); }
-    match /reviewCampaigns/{document} { allow read: if signedIn(); allow write: if admin(); }
-    match /faqs/{document} { allow read: if true; allow write: if admin(); }
-    match /students/{uid} { allow read, write: if admin() || (signedIn() && request.auth.uid == uid); }
-    match /doubts/{document} { allow read: if signedIn(); allow create: if signedIn(); allow update: if signedIn(); allow delete: if admin(); }
-    match /doubtReplies/{document} { allow read: if signedIn(); allow create: if signedIn(); allow update: if signedIn(); allow delete: if admin(); }
-    match /notifications/{document} { allow read: if signedIn(); allow create: if signedIn(); allow update, delete: if signedIn(); }
-    match /config/{document} { allow read: if true; allow write: if admin(); }
-    
-    // Helper function to check if the student is enrolled in the parent batch
-    function isEnrolledInBatch(batchId) {
-      return request.auth.uid in get(/databases/$(database)/documents/batches/$(batchId)).data.studentIds;
+    // New mentor authorization is exclusively the admin-controlled mentor record.
+    // Legacy users/{uid}.role documents are not used for mentor access.
+    function isActiveMentor() {
+      return signedIn() && request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/mentors/$(request.auth.token.email)) &&
+        get(/databases/$(database)/documents/mentors/$(request.auth.token.email)).data.status == 'active' &&
+        get(/databases/$(database)/documents/mentors/$(request.auth.token.email)).data.uid == request.auth.uid;
+    }
+    function isAssignedMentor(batchId) {
+      return isActiveMentor() && batchId in get(/databases/$(database)/documents/mentors/$(request.auth.token.email)).data.assignedBatchIds;
     }
 
-    match /batches/{document} { allow read: if admin() || (signedIn() && request.auth.uid in resource.data.studentIds); allow write: if admin(); }
-    match /batchPlanner/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /batchSessions/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /liveClasses/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /studyMaterials/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
+    // ─── Batch enrollment helpers ─────────────────────────────────────────────
+    function isEnrolledInBatch(batchId) {
+      return request.auth.uid in
+        get(/databases/$(database)/documents/batches/$(batchId)).data.studentIds;
+    }
+
+    // Returns true if the content targets the current user (either all-batch or selected)
+    function isBatchContentVisibleToMe(batchId) {
+      return isEnrolledInBatch(batchId) && (
+        resource.data.recipientMode == 'all' ||
+        resource.data.recipientType == 'all' ||
+        request.auth.uid in resource.data.recipientIds
+      );
+    }
+
+    // ─── Public collections ───────────────────────────────────────────────────
+    match /courses/{document}       { allow read: if true; allow write: if admin(); }
+    match /blogs/{document}         { allow read: if true; allow write: if admin(); }
+    match /faqs/{document}          { allow read: if true; allow write: if admin(); }
+    match /events/{document}        { allow read: if true; allow write: if admin(); }
+    match /config/{document}        { allow read: if true; allow write: if admin(); }
     match /courseRatings/{document} { allow read: if true; allow write: if admin(); }
-    match /schedules/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /recordings/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /assignments/{document} { allow read: if admin() || (signedIn() && isEnrolledInBatch(resource.data.batchId)); allow write: if admin(); }
-    match /payments/{document} { allow read: if admin() || (signedIn() && request.auth.uid == resource.data.studentId); allow write: if admin(); }
-    match /events/{document} { allow read: if true; allow write: if admin(); }
-    
+
+    // ─── Reviews ─────────────────────────────────────────────────────────────
+    match /reviews/{document} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.status == 'Pending';
+      allow update, delete: if admin();
+    }
+
+    // ─── Review Campaigns ────────────────────────────────────────────────────
+    match /reviewCampaigns/{document} {
+      allow read: if admin() || (signedIn() && request.auth.uid in resource.data.recipientIds);
+      allow write: if admin();
+    }
+
+    // ─── Student profiles (own read/write, admin full access) ─────────────────
+    match /students/{uid} {
+      allow read: if admin() || (signedIn() && request.auth.uid == uid);
+      allow write: if admin() || (signedIn() && request.auth.uid == uid);
+    }
+
+    // ─── Doubts & replies ────────────────────────────────────────────────────
+    // Students can only create doubts for themselves; admins and mentors can do anything.
+    match /doubts/{document} {
+      allow read: if admin() || (signedIn() && resource.data.studentId == request.auth.uid) || isAssignedMentor(resource.data.batchId);
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow update: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && resource.data.studentId == request.auth.uid);
+      allow delete: if admin();
+    }
+    match /doubtReplies/{document} {
+      allow read: if admin() || (signedIn() && resource.data.authorId == request.auth.uid) || isAssignedMentor(resource.data.batchId);
+      allow create: if admin() || isAssignedMentor(request.resource.data.batchId) || (signedIn() && request.resource.data.authorId == request.auth.uid);
+      allow update: if admin() || isAssignedMentor(resource.data.batchId);
+      allow delete: if admin();
+    }
+
+    // ─── Notifications ────────────────────────────────────────────────────────
+    match /notifications/{document} {
+      allow read: if admin() || (signedIn() && (
+        request.auth.uid in resource.data.recipientIds
+        || resource.data.target == 'Everyone'
+        || resource.data.target == 'Students'
+        || resource.data.targetId == request.auth.uid
+        || resource.data.userId == request.auth.uid
+        || (resource.data.target == 'Batch' && isEnrolledInBatch(resource.data.targetId))
+      ));
+      allow create, update, delete: if admin();
+    }
+
+    // ─── Batches ──────────────────────────────────────────────────────────────
+    match /batches/{document} {
+      allow read: if admin() || isAssignedMentor(document) || (signedIn() && request.auth.uid in resource.data.studentIds);
+      allow write: if admin();
+    }
+
+    // ─── Batch planner / sessions / live classes ──────────────────────────────
+    match /batchPlanner/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isEnrolledInBatch(resource.data.batchId));
+      allow write: if admin();
+    }
+    match /batchSessions/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow write: if admin();
+    }
+    match /liveClasses/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isEnrolledInBatch(resource.data.batchId));
+      allow write: if admin();
+    }
+    match /schedules/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isEnrolledInBatch(resource.data.batchId));
+      allow write: if admin();
+    }
+
+    // ─── Study Materials ──────────────────────────────────────────────────────
+    match /studyMaterials/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow write: if admin();
+    }
+
+    // ─── Recordings ───────────────────────────────────────────────────────────
+    match /recordings/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow write: if admin();
+    }
+
+    // ─── Assignments ──────────────────────────────────────────────────────────
+    match /assignments/{document} {
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow write: if admin();
+    }
+
+    // ─── Payments ─────────────────────────────────────────────────────────────
+    match /payments/{document} {
+      allow read: if admin() || (signedIn() && request.auth.uid == resource.data.studentId);
+      allow write: if admin();
+    }
+
+    // ─── Server Enquiries ─────────────────────────────────────────────────────
+    match /serverEnquiries/{document} {
+      allow read: if admin();
+      // Public (unauthenticated) users can submit enquiries
+      allow create: if true;
+      allow update, delete: if admin();
+    }
+
+    // ─── User roles (backend-managed) ─────────────────────────────────────────
+    // Only the backend (admin SDK) writes here. Frontend reads own doc to learn its role.
+    match /users/{uid} {
+      allow read: if admin() || (signedIn() && request.auth.uid == uid);
+      allow write: if admin();
+    }
+
+    match /mentors/{email} {
+      allow read: if admin() || (signedIn() && request.auth.token.email == email && resource.data.uid == request.auth.uid);
+      allow write: if admin();
+    }
+
+    // ─── Catch-all: only admins can access anything not explicitly matched ─────
     match /{document=**} { allow read, write: if admin(); }
   }
 }
