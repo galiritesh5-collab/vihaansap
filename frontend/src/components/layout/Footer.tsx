@@ -18,7 +18,6 @@ import { Youtube, Twitter, MessageCircle, Send, Phone as PhoneIcon, Link2, Githu
 import localFooterLogo from '../../assets/branding/footer-logo.svg';
 
 export default function Footer() {
-  const { config } = useBrandingConfig();
   const currentYear = new Date().getFullYear();
   const db = useDB();
   const { config: brandingConfig } = useBrandingConfig();
@@ -38,7 +37,7 @@ export default function Footer() {
                * Display     : max-h-[54px] max-w-[200px]
                */}
               <img
-                src={config?.footerLogoUrl || "/footer-logo.png"}
+                src={brandingConfig?.footerLogoUrl || "/footer-logo.png"}
                 alt="Sri Vihaan Consulting"
                 className="max-h-[48px] sm:max-h-[54px] max-w-[180px] sm:max-w-[200px] object-contain transition-opacity group-hover:opacity-90"
               />

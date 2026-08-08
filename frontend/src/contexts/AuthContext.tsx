@@ -19,11 +19,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Firebase persistence must be configured once. In React StrictMode an effect is
+// mounted twice in development; parallel setPersistence calls can leave Firebase
+// Auth in a pending state and prevent onAuthStateChanged from settling.
+let persistenceSetup: Promise<void> | null = null;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [studentProfile, setStudentProfile] = useState<any | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'mentor' | 'student' | null>(null);
   const [loading, setLoading] = useState(true);
+  const authStateReceived = useRef(false);
 
   // Ref to hold the unsubscribe function for the per-student Firestore listener.
   // Using a ref (not state) so updates don't trigger re-renders.
@@ -82,15 +88,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setPersistence(auth, browserLocalPersistence).catch((error) => {
-      console.error('Auth persistence error:', error);
-    });
-
     // Track the Firestore collection listener (shared across all collections)
     let unsubFirestore: (() => void) | undefined;
+    let unsubAuth: (() => void) | undefined;
+    let active = true;
 
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
+    const startAuthListener = async () => {
+      if (!persistenceSetup) {
+        persistenceSetup = setPersistence(auth, browserLocalPersistence).catch((error) => {
+          persistenceSetup = null;
+          throw error;
+        });
+      }
+      try {
+        await persistenceSetup;
+      } catch (error) {
+        // Continue with Firebase's current persistence rather than leaving the
+        // application in an indefinite loading state.
+        console.error('Auth persistence error:', error);
+      }
+      if (!active) return;
+
+      unsubAuth = onAuthStateChanged(auth, async (user) => {
+      // The initial auth resolution owns the app-level loader. Later Firebase
+      // token/auth events must not replace the current page with a spinner.
+      if (!authStateReceived.current) {
+        authStateReceived.current = true;
+        setLoading(true);
+      }
       setCurrentUser(user);
 
       if (user) {
@@ -214,10 +239,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(null);
         setLoading(false);
       }
-    });
+      });
+    };
+
+    void startAuthListener();
 
     return () => {
-      unsubAuth();
+      active = false;
+      unsubAuth?.();
       if (unsubFirestore) {
         unsubFirestore();
       }

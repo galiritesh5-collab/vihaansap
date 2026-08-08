@@ -50,10 +50,8 @@ export default function Navbar({ onOpenDemo }: NavbarProps) {
     checkAdminSession();
     const handler = () => checkAdminSession();
     window.addEventListener('storage', handler);
-    const interval = setInterval(checkAdminSession, 1000);
     return () => {
       window.removeEventListener('storage', handler);
-      clearInterval(interval);
     };
   }, []);
 

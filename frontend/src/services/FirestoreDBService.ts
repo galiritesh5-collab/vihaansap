@@ -69,8 +69,13 @@ export class FirestoreDBService {
     // 1. If user is a student, we must first securely fetch their enrolled batches.
     // We cannot query the full batches collection because of least-privilege Firestore Rules.
     if (!isAdmin) {
+      let dependentUnsubscribers: (() => void)[] = [];
       const batchesQuery = query(collection(db, 'batches'), where('studentIds', 'array-contains', user.uid));
       const unsubBatches = onSnapshot(batchesQuery, (snapshot) => {
+        // The batch listener can fire repeatedly. Tear down the previous
+        // dependent collection listeners before rebuilding their batch query.
+        dependentUnsubscribers.forEach(unsubscribe => unsubscribe());
+        dependentUnsubscribers = [];
         const myBatches = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         const currentDb = MockDB.get();
         (currentDb['batches'] as any[]) = myBatches;
@@ -101,13 +106,16 @@ export class FirestoreDBService {
                 (currentDb[colName] as any[]) = firestoreData;
                 MockDB.set(currentDb);
               }, (err) => console.error(`[FirestoreDBService] Error syncing dependent ${colName}:`, err));
-              this.unsubscribers.push(unsub);
+              dependentUnsubscribers.push(unsub);
             }
           }
         }
       }, (err) => console.error('[FirestoreDBService] Error syncing batches for student:', err));
       
-      this.unsubscribers.push(unsubBatches);
+      this.unsubscribers.push(() => {
+        dependentUnsubscribers.forEach(unsubscribe => unsubscribe());
+        unsubBatches();
+      });
     }
 
     // 2. Students receive only the collections used by their portal. Admins

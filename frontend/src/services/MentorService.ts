@@ -25,10 +25,19 @@ export const MentorService = {
     return payload;
   },
   async validateSession(): Promise<MentorRecord> {
-    const response = await fetch(`${appConfig.apiUrl}/users/mentor/session`, { method: 'POST', headers: await mentorHeaders() });
-    const payload = await response.json();
-    if (!response.ok || !payload.success) throw new Error(payload.message || 'This Google account is not authorized as a mentor. Please contact the administrator.');
-    return payload.data;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`${appConfig.apiUrl}/users/mentor/session`, { method: 'POST', headers: await mentorHeaders(), signal: controller.signal });
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'This Google account is not authorized as a mentor. Please contact the administrator.');
+      return payload.data;
+    } catch (error: any) {
+      if (error?.name === 'AbortError') throw new Error('Mentor access verification timed out. Please try again.');
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+    }
   },
   subscribeAdmin(callback: (mentors: MentorRecord[]) => void, onError: (error: Error) => void): Unsubscribe {
     return onSnapshot(collection(db, 'mentors'), snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as MentorRecord))), onError);
