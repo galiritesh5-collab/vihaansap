@@ -133,11 +133,11 @@ export default function Students() {
     const targetBatch = currentDB.batches.find((b: any) => b.name === editBatch);
     if (targetBatch) {
       const studentIds = targetBatch.studentIds || [];
-      if (!studentIds.includes(selectedStudent.id)) {
-        MockDB.updateItem('batches', targetBatch.id, {
-          studentIds: [...studentIds, selectedStudent.id],
-        });
-        FirestoreDBService.upsert('batches', targetBatch.id, { studentIds: [...studentIds, selectedStudent.id] }).catch(console.error);
+      const idsToAdd = [selectedStudent.id, selectedStudent.uid].filter(Boolean) as string[];
+      const newStudentIds = Array.from(new Set([...studentIds, ...idsToAdd]));
+      if (newStudentIds.length !== studentIds.length) {
+        MockDB.updateItem('batches', targetBatch.id, { studentIds: newStudentIds });
+        FirestoreDBService.upsert('batches', targetBatch.id, { studentIds: newStudentIds }).catch(console.error);
       }
     }
 
@@ -145,10 +145,9 @@ export default function Students() {
     if (selectedStudent.batch && selectedStudent.batch !== editBatch) {
       const oldBatch = currentDB.batches.find((b: any) => b.name === selectedStudent.batch);
       if (oldBatch) {
-        const updatedOldStudentIds = (oldBatch.studentIds || []).filter((id: string) => id !== selectedStudent.id);
-        MockDB.updateItem('batches', oldBatch.id, {
-          studentIds: updatedOldStudentIds,
-        });
+        const removeIds = [selectedStudent.id, selectedStudent.uid].filter(Boolean) as string[];
+        const updatedOldStudentIds = (oldBatch.studentIds || []).filter((id: string) => !removeIds.includes(id));
+        MockDB.updateItem('batches', oldBatch.id, { studentIds: updatedOldStudentIds });
         FirestoreDBService.upsert('batches', oldBatch.id, { studentIds: updatedOldStudentIds }).catch(console.error);
       }
     }
