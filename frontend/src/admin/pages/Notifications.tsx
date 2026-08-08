@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDB } from '../../hooks/useDB';
 import { MockDB } from '../../services/MockDB';
 import { Plus, Edit2, Trash2, X, Send, Pin } from 'lucide-react';
-
+import StudentRecipientSelector from '../components/StudentRecipientSelector';
 export default function Notifications() {
   const db = useDB();
   const [editingNotif, setEditingNotif] = useState<any>(null);
@@ -148,10 +148,12 @@ export default function Notifications() {
                       </select>
                     )}
                     {editingNotif.target === 'Student' && (
-                      <select required value={editingNotif.targetId || ''} onChange={e => setEditingNotif({...editingNotif, targetId: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Select a Student</option>
-                        {db.students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
-                      </select>
+                      <StudentRecipientSelector
+                        students={db.students}
+                        selectedIds={editingNotif.targetId ? editingNotif.targetId.split(',') : []}
+                        onChange={(ids) => setEditingNotif({ ...editingNotif, targetId: ids.join(',') })}
+                        emptyMessage="No students enrolled."
+                      />
                     )}
                   </div>
                 )}
