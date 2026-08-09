@@ -119,6 +119,8 @@ export default function DoubtSupport() {
     const newReply = {
       id: replyId,
       doubtId: selectedDoubt.id,
+      studentId: selectedDoubt.studentId,
+      batchId: selectedDoubt.batchId,
       authorId: currentUser?.uid || studentProfile?.id || '',
       authorName: studentProfile?.name || 'Student',
       authorRole: 'student',

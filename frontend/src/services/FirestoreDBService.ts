@@ -108,12 +108,50 @@ export class FirestoreDBService {
       }, (err) => console.error('[FirestoreDBService] Error syncing batches for student:', err));
       
       this.unsubscribers.push(unsubBatches);
+
+      // ── Scoped doubts subscription ─────────────────────────────────────────
+      // Rule: allow read if studentId == request.auth.uid
+      const doubtsQuery = query(collection(db, 'doubts'), where('studentId', '==', user.uid));
+      const unsubDoubts = onSnapshot(doubtsQuery, (snapshot) => {
+        const firestoreData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const currentDb = MockDB.get();
+        (currentDb['doubts'] as any[]) = firestoreData;
+        MockDB.set(currentDb);
+      }, (err) => console.error('[FirestoreDBService] Error syncing doubts:', err));
+      this.unsubscribers.push(unsubDoubts);
+
+      // ── Scoped doubtReplies subscription ───────────────────────────────────
+      // Rule: allow read if authorId == request.auth.uid OR studentId == request.auth.uid
+      // We need two queries to cover both branches, merged by doc ID.
+      const replyResults = new Map<string, Map<string, any>>();
+      const mergeReplies = (key: string, docs: any[]) => {
+        replyResults.set(key, new Map(docs.map(d => [d.id, d])));
+        const merged = new Map<string, any>();
+        replyResults.forEach(m => m.forEach((v, k) => merged.set(k, v)));
+        const currentDb = MockDB.get();
+        (currentDb['doubtReplies'] as any[]) = Array.from(merged.values());
+        MockDB.set(currentDb);
+      };
+
+      // Q1: Replies authored by this student
+      const repliesByAuthor = query(collection(db, 'doubtReplies'), where('authorId', '==', user.uid));
+      const unsubRepliesAuthor = onSnapshot(repliesByAuthor, (snapshot) => {
+        mergeReplies('author', snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      }, (err) => console.error('[FirestoreDBService] Error syncing doubtReplies (author):', err));
+      this.unsubscribers.push(unsubRepliesAuthor);
+
+      // Q2: Replies on this student's doubts (e.g. mentor replies)
+      const repliesByStudent = query(collection(db, 'doubtReplies'), where('studentId', '==', user.uid));
+      const unsubRepliesStudent = onSnapshot(repliesByStudent, (snapshot) => {
+        mergeReplies('student', snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      }, (err) => console.error('[FirestoreDBService] Error syncing doubtReplies (student):', err));
+      this.unsubscribers.push(unsubRepliesStudent);
     }
 
     // 2. Students receive only the collections used by their portal. Admins
     // retain the existing full administrative subscriptions.
     const BATCH_DEPENDENT_COLLECTIONS = ['batchPlanner', 'batchSessions', 'liveClasses', 'studyMaterials', 'schedules', 'recordings', 'assignments'];
-    const STUDENT_COLLECTIONS = new Set(['reviews', 'reviewCampaigns', 'notifications', 'doubts', 'doubtReplies', 'events', 'courses', 'blogs', 'faqs', 'courseRatings']);
+    const STUDENT_COLLECTIONS = new Set(['reviews', 'reviewCampaigns', 'notifications', 'events', 'courses', 'blogs', 'faqs', 'courseRatings']);
     for (const colName of COLLECTIONS_TO_SYNC) {
       if (!isAdmin && colName === 'batches') continue; // Handled specially above for students
       if (!isAdmin && BATCH_DEPENDENT_COLLECTIONS.includes(colName)) continue; // Handled specially for students

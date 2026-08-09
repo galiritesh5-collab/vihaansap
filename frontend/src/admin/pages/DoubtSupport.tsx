@@ -74,6 +74,8 @@ export default function DoubtSupport({ fixedBatchId }: { fixedBatchId?: string }
     const newReply = {
       id: replyId,
       doubtId: selectedDoubt.id,
+      studentId: selectedDoubt.studentId,
+      batchId: selectedDoubt.batchId,
       authorId: currentUser?.uid || 'admin',
       authorName: currentUser?.displayName || 'Admin',
       authorRole: userRole || 'admin',
