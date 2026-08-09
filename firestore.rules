@@ -35,6 +35,9 @@ service cloud.firestore {
       return isEnrolledInBatch(batchId) && (
         resource.data.recipientMode == 'all' ||
         resource.data.recipientType == 'all' ||
+        resource.data.visibility == 'Students' ||
+        resource.data.visibility == 'Everyone' ||
+        (!('recipientMode' in resource.data) && !('recipientType' in resource.data) && !('visibility' in resource.data)) ||
         request.auth.uid in resource.data.recipientIds
       );
     }
@@ -111,7 +114,7 @@ service cloud.firestore {
       allow write: if admin();
     }
     match /batchSessions/{document} {
-      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isEnrolledInBatch(resource.data.batchId));
       allow write: if admin();
     }
     match /liveClasses/{document} {
@@ -137,7 +140,7 @@ service cloud.firestore {
 
     // ─── Assignments ──────────────────────────────────────────────────────────
     match /assignments/{document} {
-      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isBatchContentVisibleToMe(resource.data.batchId));
+      allow read: if admin() || isAssignedMentor(resource.data.batchId) || (signedIn() && isEnrolledInBatch(resource.data.batchId));
       allow write: if admin();
     }
 

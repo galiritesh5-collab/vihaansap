@@ -80,7 +80,8 @@ export class FirestoreDBService {
         
         // Now that we have batchIds, we must safely sync dependent collections using `in` queries
         // because Firestore rules enforce `isEnrolledInBatch(resource.data.batchId)`.
-        const BATCH_DEPENDENT_COLLECTIONS = ['batchPlanner', 'batchSessions', 'liveClasses', 'studyMaterials', 'schedules', 'recordings', 'assignments'];
+        const BATCH_DEPENDENT_COLLECTIONS = ['batchPlanner', 'batchSessions', 'liveClasses', 'schedules', 'assignments'];
+        const TARGETED_COLLECTIONS = ['studyMaterials', 'recordings'];
         
         if (myBatchIds.length > 0) {
           // Firestore 'in' queries support max 10 values. We must chunk them if necessary.
@@ -96,12 +97,45 @@ export class FirestoreDBService {
               const unsub = onSnapshot(q, (snapshot) => {
                 const firestoreData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 const currentDb = MockDB.get();
-                // We append or overwrite based on the chunk. For simplicity, if we chunk, 
-                // it might get complex. Assuming max 10 batches for now:
                 (currentDb[colName] as any[]) = firestoreData;
                 MockDB.set(currentDb);
               }, (err) => console.error(`[FirestoreDBService] Error syncing dependent ${colName}:`, err));
               this.unsubscribers.push(unsub);
+            }
+          }
+
+          // Implement multi-query merger for collections with targeted visibility (studyMaterials, recordings)
+          for (const colName of TARGETED_COLLECTIONS) {
+            for (const chunk of chunkedBatchIds) {
+              const colRef = collection(db, colName);
+              const mergerState = new Map<string, any>();
+              
+              const mergeDocs = (docs: any[]) => {
+                docs.forEach(d => mergerState.set(d.id, d));
+                const currentDb = MockDB.get();
+                (currentDb[colName as 'studyMaterials' | 'recordings'] as any[]) = Array.from(mergerState.values());
+                MockDB.set(currentDb);
+              };
+
+              // Q1: Target 'all'
+              const q1 = query(colRef, where('batchId', 'in', chunk), where('recipientMode', '==', 'all'));
+              this.unsubscribers.push(onSnapshot(q1, snap => mergeDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error(`Sync error ${colName} Q1:`, err)));
+
+              // Q2: Target 'all' (legacy field)
+              const q2 = query(colRef, where('batchId', 'in', chunk), where('recipientType', '==', 'all'));
+              this.unsubscribers.push(onSnapshot(q2, snap => mergeDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error(`Sync error ${colName} Q2:`, err)));
+
+              // Q3: Target selected student
+              const q3 = query(colRef, where('batchId', 'in', chunk), where('recipientIds', 'array-contains', user.uid));
+              this.unsubscribers.push(onSnapshot(q3, snap => mergeDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error(`Sync error ${colName} Q3:`, err)));
+
+              // Q4: Legacy visibility 'Students'
+              const q4 = query(colRef, where('batchId', 'in', chunk), where('visibility', '==', 'Students'));
+              this.unsubscribers.push(onSnapshot(q4, snap => mergeDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error(`Sync error ${colName} Q4:`, err)));
+
+              // Q5: Legacy visibility 'Everyone'
+              const q5 = query(colRef, where('batchId', 'in', chunk), where('visibility', '==', 'Everyone'));
+              this.unsubscribers.push(onSnapshot(q5, snap => mergeDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => console.error(`Sync error ${colName} Q5:`, err)));
             }
           }
         }
